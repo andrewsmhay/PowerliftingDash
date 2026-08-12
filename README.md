@@ -87,16 +87,27 @@ for the same date always take precedence going forward if you later edit
 that date through `/entries/new` (upsert is keyed on `entry_date`, so
 whichever save happens most recently wins).
 
-> **Not yet validated against a live sheet.** The header-matching logic
-> (`app/sync.py::_normalise_header`) is unit-tested against a handful of
-> synthetic header strings, not against a live sheet, because the agent
-> that built this never had read access to the linked Google Sheet (a 403
-> was returned even after the Google account was connected) - the schema
-> was generated from an uploaded export instead. On your first real sync,
-> check the Settings page's sync status message for any columns it
-> couldn't map. If a header doesn't match, either rename it to match an
-> Item name in `schema/v1_items.csv` or re-run `schema/generate_schema.py`
-> against your actual headers.
+> **Schema verified against the live sheet, but no dated-entries tab exists
+> yet.** An earlier attempt to read the linked Google Sheet returned a 403
+> even after the Google account was connected, so `schema/v1_items.csv` was
+> generated from an uploaded export instead. That access issue has since
+> been resolved (it was a stale connector session, not a permissions
+> problem on the sheet itself), and a live read confirms all 44 v1 items -
+> area, item name, description and unit - match the checked-in CSV exactly,
+> aside from the BMI/BMR description and manual-input-flag edits made
+> deliberately in this repo (see "How the schema was built" above).
+>
+> What's still unverified is the header-matching logic itself
+> (`app/sync.py::_normalise_header`) against a real dated-entries tab,
+> because the sheet doesn't have one: both existing tabs (`v1` and `v2`) are
+> metric catalogues/data dictionaries, one row per Item, not one row per
+> date. `v2` also defines 17 further items (MyFitnessPal nutrition targets,
+> and an Event countdown) that this project's schema doesn't cover yet,
+> since the original scope was v1 only. On your first real sync against a
+> tab you create yourself, check the Settings page's sync status message
+> for any columns it couldn't map. If a header doesn't match, either rename
+> it to match an Item name in `schema/v1_items.csv` or re-run
+> `schema/generate_schema.py` against your actual headers.
 
 ## Google authentication
 
