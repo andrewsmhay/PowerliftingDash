@@ -22,18 +22,21 @@ def _safe(value):
     return value if isinstance(value, (int, float)) else None
 
 
-def _progress_pct(current, target, competition=None):
-    """0-100 progress towards target, using competition (or 0) as the
-    starting baseline where available, so the bar reflects genuine progress
-    rather than an arbitrary zero point.
+def _progress_pct(current, target):
+    """0-100 progress towards target, as a plain current/target ratio.
+
+    Kept deliberately simple and consistent across every card type: the
+    bar always answers "how close to the target am I", while any
+    comparison to a competition lift is shown separately via the
+    competition/competition_delta fields rather than folded into the bar.
+    An earlier version used the competition value as the bar's baseline,
+    which meant a lifter sitting right at their competition number (i.e.
+    no change since the meet) saw an empty bar even when close to target -
+    contradicting the "Remaining" figure shown alongside it.
     """
     if current is None or target is None or target == 0:
         return None
-    baseline = competition if competition is not None else 0
-    span = target - baseline
-    if span == 0:
-        return 100 if current >= target else 0
-    pct = (current - baseline) / span * 100
+    pct = current / target * 100
     return max(0, min(100, round(pct, 1)))
 
 
@@ -55,7 +58,7 @@ def build_lift_cards(entry: dict | None) -> list[dict]:
                 "competition": competition,
                 "remaining": remaining,
                 "competition_delta": delta,
-                "progress_pct": _progress_pct(current, target, competition),
+                "progress_pct": _progress_pct(current, target),
             }
         )
     return cards
@@ -74,7 +77,7 @@ def build_total_card(entry: dict | None) -> dict:
         "target": target,
         "competition": competition,
         "remaining": remaining,
-        "progress_pct": _progress_pct(current, target, competition),
+        "progress_pct": _progress_pct(current, target),
     }
 
 

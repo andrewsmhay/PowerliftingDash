@@ -56,6 +56,16 @@ fat %, BMI, BMR, all with target/remaining/"to date" variants).
 4. Add one row per dated entry. Columns you don't fill in are simply
    stored as empty for that date.
 
+> **Not yet validated against a live sheet.** The header-matching logic
+> (`app/sync.py::_normalise_header`) is unit-tested against a handful of
+> synthetic header strings, not against your actual v1 tab, because the
+> agent that built this never had read access to the live sheet - the
+> schema was generated from an uploaded export instead. On your first real
+> sync, check the Settings page's sync status message for any columns it
+> couldn't map. If a header doesn't match, either rename it to match an
+> Item name in `schema/v1_items.csv` or re-run `schema/generate_schema.py`
+> against your actual headers.
+
 ## Google authentication
 
 The app talks to the Sheets API as a **service account** (the only sane
