@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}PowerliftingDash{% endblock %}
+{% block content %}
+<div class="top-bar">
+    <div>
+        <h1>PowerliftingDash</h1>
+        <div class="subtitle" id="latest-entry-date">
+            {% if data.latest_entry_date %}Latest entry: {{ data.latest_entry_date }}{% else %}No entries yet{% endif %}
+        </div>
+    </div>
+    <div class="status-cluster">
+        <span id="sync-status"><span class="status-dot"></span><span id="sync-status-text">--</span></span>
+        <a class="gear-link" href="/settings" title="Settings">&#9881;</a>
+    </div>
+</div>
+
+{% if not has_sheet %}
+<div class="empty-state">
+    No Google Sheet configured yet. Head to <a href="/settings">Settings</a> to connect the sheet this dashboard should sync from.
+</div>
+{% endif %}
+
+<div class="section-label">Lifts</div>
+<div class="card-grid" id="lift-cards"></div>
+
+<div class="section-label">Body Composition</div>
+<div class="card-grid" id="body-cards"></div>
+
+<div class="section-label">Trends</div>
+<div class="charts-grid">
+    <div class="chart-card">
+        <div class="card-label">1RM over time (kg)</div>
+        <div class="chart-canvas-wrap"><canvas id="chart-lifts"></canvas></div>
+    </div>
+    <div class="chart-card">
+        <div class="card-label">Body composition over time (kg)</div>
+        <div class="chart-canvas-wrap"><canvas id="chart-body"></canvas></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/chart.umd.min.js"></script>
+<script>
+window.DASHBOARD_CONFIG = { pollSeconds: {{ poll_seconds }} };
+</script>
+<script src="/static/js/dashboard.js"></script>
+{% endblock %}

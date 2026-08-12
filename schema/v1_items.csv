@@ -1,0 +1,45 @@
+area,item,description,measurement_type,configured_in_settings,read_from_new_date_entry
+Goals,Squat 1RM (current),Current one repetition maximum,kg,True,False
+Goals,Squat 1RM (target),Target one repetition maximum,kg,True,False
+Goals,Squat 1RM (competition),One repetition maximum from competition,kg,True,False
+Goals,Squat 1RM (remaining),Remaining weight to hit one repetition maximum,kg,False,True
+Goals,Squat 1RM (competition delta),Delta in one repetition maximum from competition to current 1RM,kg,False,True
+Goals,Bench 1RM (current),Current one repetition maximum,kg,True,False
+Goals,Bench 1RM (target),Target one repetition maximum,kg,True,False
+Goals,Bench 1RM (competition),One repetition maximum from competition,kg,True,False
+Goals,Bench 1RM (remaining),Remaining weight to hit one repetition maximum,kg,False,True
+Goals,Bench 1RM (competition delta),Delta in one repetition maximum from competition to current 1RM,kg,False,True
+Goals,Deadlift 1RM (current),Current one repetition maximum,kg,True,False
+Goals,Deadlift 1RM (target),Target one repetition maximum,kg,True,False
+Goals,Deadlift 1RM (competition),One repetition maximum from competition,kg,True,False
+Goals,Deadlift 1RM (remaining),Remaining weight to hit one repetition maximum,kg,False,True
+Goals,Deadlift 1RM (competition delta),Delta in one repetition maximum from competition to current 1RM,kg,False,True
+Goals,Total Weight Lifted (target),Sum of all three exercises above (target),kg,False,True
+Goals,Total Weight Lifted (in competition),Sum of all three exercises above (competition),kg,False,True
+Goals,Total Weight Lifted (current),Sum of all three exercises above (current),kg,False,True
+Goals,Total Weight Lifted (remaining),Sum of all three exercises above (remaining),kg,False,True
+Goals,Weight Change Since Comp,Change in weight since last competition (current weight - competition weigh-in),kg,False,True
+Status,Body Weight Mass,Current measured body weight mass,kg,True,False
+Status,Body Weight Mass (target),Target body weight mass,kg,True,False
+Status,Body Weight Mass (remaining),Remaining weight to hit body weight mass target,kg,False,True
+Status,Body Weight Mass (to date),Total amount of weight lost or gained since start,kg,False,True
+Status,Skeletal Muscle Mass,Current skeletal muscle mass,kg,True,False
+Status,Skeletal Muscle Mass (target),Target skeletal muscle mass,kg,True,False
+Status,Skeletal Muscle Mass (remaining),Remaining muscle mass to hit skeletal muscle mass target,kg,False,True
+Status,Skeletal Muscle Mass (to date),Total amount of skeletal muscle mass lost or gained since start,kg,False,True
+Status,Body Fat Mass,Current body fat mass,kg,True,False
+Status,Body Fat Mass (target),Target fat mass,kg,True,False
+Status,Body Fat Mass (remaining),Remaining fat to hit fat mass target,kg,False,True
+Status,Body Fat Mass (to date),Total amount of body fat mass lost or gained since start,kg,False,True
+Status,Percent Body Fat,Current percent body fat,%,True,False
+Status,Percent Body Fat (target),Target body fat percentage,%,True,False
+Status,Percent Body Fat (remaining),Remaining percentage to hit body fat percentage target,%,False,True
+Status,Percentage Body Fat (to date),Total percentage of body fat lost or gained since start,%,False,True
+Status,BMI,Current Body Mass Index (BMI),kg/m^2,False,True
+Status,BMI (target),Body Mass Index (target),kg/m^2,False,True
+Status,BMI (remaining),Remaining BM to hit target index,kg,False,True
+Status,BMI (to date),Total of BMI lost or gained since start,kg,False,True
+Status,BMR,Current Basal Metabolic Rate (BMR),kcal,False,True
+Status,BMR (target),Base Metabolic Rate (target),kcal,False,True
+Status,BMR (remaining),Remaining BM to hit target rate,kcal,False,True
+Status,BMR (to date),Total of BMR lost or gained since start,kcal,False,True

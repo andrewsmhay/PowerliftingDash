@@ -1,0 +1,445 @@
+{
+  "source": "v1",
+  "columns": [
+    {
+      "column": "squat_1rm_current",
+      "area": "Goals",
+      "item": "Squat 1RM (current)",
+      "description": "Current one repetition maximum",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": true,
+      "read_from_new_date_entry": false
+    },
+    {
+      "column": "squat_1rm_target",
+      "area": "Goals",
+      "item": "Squat 1RM (target)",
+      "description": "Target one repetition maximum",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": true,
+      "read_from_new_date_entry": false
+    },
+    {
+      "column": "squat_1rm_competition",
+      "area": "Goals",
+      "item": "Squat 1RM (competition)",
+      "description": "One repetition maximum from competition",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": true,
+      "read_from_new_date_entry": false
+    },
+    {
+      "column": "squat_1rm_remaining",
+      "area": "Goals",
+      "item": "Squat 1RM (remaining)",
+      "description": "Remaining weight to hit one repetition maximum",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": false,
+      "read_from_new_date_entry": true
+    },
+    {
+      "column": "squat_1rm_competition_delta",
+      "area": "Goals",
+      "item": "Squat 1RM (competition delta)",
+      "description": "Delta in one repetition maximum from competition to current 1RM",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": false,
+      "read_from_new_date_entry": true
+    },
+    {
+      "column": "bench_1rm_current",
+      "area": "Goals",
+      "item": "Bench 1RM (current)",
+      "description": "Current one repetition maximum",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": true,
+      "read_from_new_date_entry": false
+    },
+    {
+      "column": "bench_1rm_target",
+      "area": "Goals",
+      "item": "Bench 1RM (target)",
+      "description": "Target one repetition maximum",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": true,
+      "read_from_new_date_entry": false
+    },
+    {
+      "column": "bench_1rm_competition",
+      "area": "Goals",
+      "item": "Bench 1RM (competition)",
+      "description": "One repetition maximum from competition",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": true,
+      "read_from_new_date_entry": false
+    },
+    {
+      "column": "bench_1rm_remaining",
+      "area": "Goals",
+      "item": "Bench 1RM (remaining)",
+      "description": "Remaining weight to hit one repetition maximum",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": false,
+      "read_from_new_date_entry": true
+    },
+    {
+      "column": "bench_1rm_competition_delta",
+      "area": "Goals",
+      "item": "Bench 1RM (competition delta)",
+      "description": "Delta in one repetition maximum from competition to current 1RM",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": false,
+      "read_from_new_date_entry": true
+    },
+    {
+      "column": "deadlift_1rm_current",
+      "area": "Goals",
+      "item": "Deadlift 1RM (current)",
+      "description": "Current one repetition maximum",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": true,
+      "read_from_new_date_entry": false
+    },
+    {
+      "column": "deadlift_1rm_target",
+      "area": "Goals",
+      "item": "Deadlift 1RM (target)",
+      "description": "Target one repetition maximum",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": true,
+      "read_from_new_date_entry": false
+    },
+    {
+      "column": "deadlift_1rm_competition",
+      "area": "Goals",
+      "item": "Deadlift 1RM (competition)",
+      "description": "One repetition maximum from competition",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": true,
+      "read_from_new_date_entry": false
+    },
+    {
+      "column": "deadlift_1rm_remaining",
+      "area": "Goals",
+      "item": "Deadlift 1RM (remaining)",
+      "description": "Remaining weight to hit one repetition maximum",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": false,
+      "read_from_new_date_entry": true
+    },
+    {
+      "column": "deadlift_1rm_competition_delta",
+      "area": "Goals",
+      "item": "Deadlift 1RM (competition delta)",
+      "description": "Delta in one repetition maximum from competition to current 1RM",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": false,
+      "read_from_new_date_entry": true
+    },
+    {
+      "column": "total_weight_lifted_target",
+      "area": "Goals",
+      "item": "Total Weight Lifted (target)",
+      "description": "Sum of all three exercises above (target)",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": false,
+      "read_from_new_date_entry": true
+    },
+    {
+      "column": "total_weight_lifted_in_competition",
+      "area": "Goals",
+      "item": "Total Weight Lifted (in competition)",
+      "description": "Sum of all three exercises above (competition)",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": false,
+      "read_from_new_date_entry": true
+    },
+    {
+      "column": "total_weight_lifted_current",
+      "area": "Goals",
+      "item": "Total Weight Lifted (current)",
+      "description": "Sum of all three exercises above (current)",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": false,
+      "read_from_new_date_entry": true
+    },
+    {
+      "column": "total_weight_lifted_remaining",
+      "area": "Goals",
+      "item": "Total Weight Lifted (remaining)",
+      "description": "Sum of all three exercises above (remaining)",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": false,
+      "read_from_new_date_entry": true
+    },
+    {
+      "column": "weight_change_since_comp",
+      "area": "Goals",
+      "item": "Weight Change Since Comp",
+      "description": "Change in weight since last competition (current weight - competition weigh-in)",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": false,
+      "read_from_new_date_entry": true
+    },
+    {
+      "column": "body_weight_mass",
+      "area": "Status",
+      "item": "Body Weight Mass",
+      "description": "Current measured body weight mass",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": true,
+      "read_from_new_date_entry": false
+    },
+    {
+      "column": "body_weight_mass_target",
+      "area": "Status",
+      "item": "Body Weight Mass (target)",
+      "description": "Target body weight mass",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": true,
+      "read_from_new_date_entry": false
+    },
+    {
+      "column": "body_weight_mass_remaining",
+      "area": "Status",
+      "item": "Body Weight Mass (remaining)",
+      "description": "Remaining weight to hit body weight mass target",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": false,
+      "read_from_new_date_entry": true
+    },
+    {
+      "column": "body_weight_mass_to_date",
+      "area": "Status",
+      "item": "Body Weight Mass (to date)",
+      "description": "Total amount of weight lost or gained since start",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": false,
+      "read_from_new_date_entry": true
+    },
+    {
+      "column": "skeletal_muscle_mass",
+      "area": "Status",
+      "item": "Skeletal Muscle Mass",
+      "description": "Current skeletal muscle mass",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": true,
+      "read_from_new_date_entry": false
+    },
+    {
+      "column": "skeletal_muscle_mass_target",
+      "area": "Status",
+      "item": "Skeletal Muscle Mass (target)",
+      "description": "Target skeletal muscle mass",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": true,
+      "read_from_new_date_entry": false
+    },
+    {
+      "column": "skeletal_muscle_mass_remaining",
+      "area": "Status",
+      "item": "Skeletal Muscle Mass (remaining)",
+      "description": "Remaining muscle mass to hit skeletal muscle mass target",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": false,
+      "read_from_new_date_entry": true
+    },
+    {
+      "column": "skeletal_muscle_mass_to_date",
+      "area": "Status",
+      "item": "Skeletal Muscle Mass (to date)",
+      "description": "Total amount of skeletal muscle mass lost or gained since start",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": false,
+      "read_from_new_date_entry": true
+    },
+    {
+      "column": "body_fat_mass",
+      "area": "Status",
+      "item": "Body Fat Mass",
+      "description": "Current body fat mass",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": true,
+      "read_from_new_date_entry": false
+    },
+    {
+      "column": "body_fat_mass_target",
+      "area": "Status",
+      "item": "Body Fat Mass (target)",
+      "description": "Target fat mass",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": true,
+      "read_from_new_date_entry": false
+    },
+    {
+      "column": "body_fat_mass_remaining",
+      "area": "Status",
+      "item": "Body Fat Mass (remaining)",
+      "description": "Remaining fat to hit fat mass target",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": false,
+      "read_from_new_date_entry": true
+    },
+    {
+      "column": "body_fat_mass_to_date",
+      "area": "Status",
+      "item": "Body Fat Mass (to date)",
+      "description": "Total amount of body fat mass lost or gained since start",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": false,
+      "read_from_new_date_entry": true
+    },
+    {
+      "column": "percent_body_fat",
+      "area": "Status",
+      "item": "Percent Body Fat",
+      "description": "Current percent body fat",
+      "measurement_type": "%",
+      "sql_type": "REAL",
+      "configured_in_settings": true,
+      "read_from_new_date_entry": false
+    },
+    {
+      "column": "percent_body_fat_target",
+      "area": "Status",
+      "item": "Percent Body Fat (target)",
+      "description": "Target body fat percentage",
+      "measurement_type": "%",
+      "sql_type": "REAL",
+      "configured_in_settings": true,
+      "read_from_new_date_entry": false
+    },
+    {
+      "column": "percent_body_fat_remaining",
+      "area": "Status",
+      "item": "Percent Body Fat (remaining)",
+      "description": "Remaining percentage to hit body fat percentage target",
+      "measurement_type": "%",
+      "sql_type": "REAL",
+      "configured_in_settings": false,
+      "read_from_new_date_entry": true
+    },
+    {
+      "column": "percent_body_fat_to_date",
+      "area": "Status",
+      "item": "Percentage Body Fat (to date)",
+      "description": "Total percentage of body fat lost or gained since start",
+      "measurement_type": "%",
+      "sql_type": "REAL",
+      "configured_in_settings": false,
+      "read_from_new_date_entry": true
+    },
+    {
+      "column": "bmi",
+      "area": "Status",
+      "item": "BMI",
+      "description": "Current Body Mass Index (BMI)",
+      "measurement_type": "kg/m^2",
+      "sql_type": "REAL",
+      "configured_in_settings": false,
+      "read_from_new_date_entry": true
+    },
+    {
+      "column": "bmi_target",
+      "area": "Status",
+      "item": "BMI (target)",
+      "description": "Body Mass Index (target)",
+      "measurement_type": "kg/m^2",
+      "sql_type": "REAL",
+      "configured_in_settings": false,
+      "read_from_new_date_entry": true
+    },
+    {
+      "column": "bmi_remaining",
+      "area": "Status",
+      "item": "BMI (remaining)",
+      "description": "Remaining BM to hit target index",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": false,
+      "read_from_new_date_entry": true
+    },
+    {
+      "column": "bmi_to_date",
+      "area": "Status",
+      "item": "BMI (to date)",
+      "description": "Total of BMI lost or gained since start",
+      "measurement_type": "kg",
+      "sql_type": "REAL",
+      "configured_in_settings": false,
+      "read_from_new_date_entry": true
+    },
+    {
+      "column": "bmr",
+      "area": "Status",
+      "item": "BMR",
+      "description": "Current Basal Metabolic Rate (BMR)",
+      "measurement_type": "kcal",
+      "sql_type": "REAL",
+      "configured_in_settings": false,
+      "read_from_new_date_entry": true
+    },
+    {
+      "column": "bmr_target",
+      "area": "Status",
+      "item": "BMR (target)",
+      "description": "Base Metabolic Rate (target)",
+      "measurement_type": "kcal",
+      "sql_type": "REAL",
+      "configured_in_settings": false,
+      "read_from_new_date_entry": true
+    },
+    {
+      "column": "bmr_remaining",
+      "area": "Status",
+      "item": "BMR (remaining)",
+      "description": "Remaining BM to hit target rate",
+      "measurement_type": "kcal",
+      "sql_type": "REAL",
+      "configured_in_settings": false,
+      "read_from_new_date_entry": true
+    },
+    {
+      "column": "bmr_to_date",
+      "area": "Status",
+      "item": "BMR (to date)",
+      "description": "Total of BMR lost or gained since start",
+      "measurement_type": "kcal",
+      "sql_type": "REAL",
+      "configured_in_settings": false,
+      "read_from_new_date_entry": true
+    }
+  ]
+}

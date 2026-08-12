@@ -1,0 +1,20 @@
+services:
+  powerliftingdash:
+    build: .
+    image: powerliftingdash:latest
+    container_name: powerliftingdash
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - powerliftingdash-data:/data
+      # Optional: drop a service account key file here instead of pasting
+      # it into the Settings page.
+      # - ./service_account.json:/data/service_account.json:ro
+    environment:
+      TZ: America/Toronto
+      # PLD_GOOGLE_SERVICE_ACCOUNT_JSON: '{"type": "service_account", ...}'
+      # PLD_GOOGLE_SERVICE_ACCOUNT_FILE: /data/service_account.json
+
+volumes:
+  powerliftingdash-data:

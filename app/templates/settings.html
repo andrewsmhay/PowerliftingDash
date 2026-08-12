@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Settings - PowerliftingDash{% endblock %}
+{% block content %}
+<div class="settings-wrap">
+    <a class="back-link" href="/">&larr; Back to dashboard</a>
+    <h1>Settings</h1>
+    <p class="lead">Configure the Google Sheet this dashboard syncs from, and how often it syncs.</p>
+
+    <div class="info-box">
+        {% if service_account_email %}
+            Share your Google Sheet with this service account (Viewer access is enough):<br>
+            <code>{{ service_account_email }}</code>
+        {% else %}
+            No Google service account credentials are configured yet. Paste a service account JSON key below,
+            or set <code>PLD_GOOGLE_SERVICE_ACCOUNT_JSON</code> / <code>PLD_GOOGLE_SERVICE_ACCOUNT_FILE</code>
+            on the container, or mount a key file at <code>/data/service_account.json</code>.
+        {% endif %}
+    </div>
+
+    <form id="settings-form">
+        <div class="field-group">
+            <label for="google_sheet_id">Google Sheet ID</label>
+            <input type="text" id="google_sheet_id" name="google_sheet_id"
+                   value="{{ settings.google_sheet_id or '' }}"
+                   placeholder="1zaqLXpLV8GXWoWDJoYeDG-pAXci3wCnYdslYQ8UEQ5A">
+            <div class="hint">The long ID from the Sheet's URL, between /d/ and /edit.</div>
+        </div>
+
+        <div class="field-group">
+            <label for="entries_tab_name">Entries tab name</label>
+            <input type="text" id="entries_tab_name" name="entries_tab_name"
+                   value="{{ settings.entries_tab_name or 'v1' }}">
+            <div class="hint">The tab that contains your dated entry rows, with one row per date.</div>
+        </div>
+
+        <div class="field-group">
+            <label for="date_column_name">Date column header</label>
+            <input type="text" id="date_column_name" name="date_column_name"
+                   value="{{ settings.date_column_name or 'Date' }}">
+            <div class="hint">Header text of the column holding dates, entered as dd/mm/yyyy.</div>
+        </div>
+
+        <div class="field-group">
+            <label for="sync_interval_minutes">Sync interval (minutes)</label>
+            <input type="number" id="sync_interval_minutes" name="sync_interval_minutes" min="1"
+                   value="{{ settings.sync_interval_minutes or 10 }}">
+        </div>
+
+        <div class="field-group">
+            <label for="timezone">Timezone</label>
+            <input type="text" id="timezone" name="timezone" value="{{ settings.timezone or 'America/Toronto' }}">
+        </div>
+
+        <div class="field-group">
+            <label for="service_account_json">Service account JSON key (optional override)</label>
+            <textarea id="service_account_json" name="service_account_json"
+                      placeholder="Paste the full JSON key here, or leave blank to use an existing credential"></textarea>
+            <div class="hint">Leave blank to keep the currently configured credential unchanged.</div>
+        </div>
+
+        <button type="submit" class="btn">Save settings</button>
+        <button type="button" class="btn secondary" id="sync-now-btn">Sync now</button>
+        <div id="save-status"></div>
+    </form>
+
+    <div class="section-label" style="margin-top:34px;">Sync status</div>
+    <div class="info-box">
+        Entries stored: <strong>{{ entry_count }}</strong><br>
+        Last sync: {{ settings.last_sync_at or "never" }}<br>
+        {% if settings.last_sync_status %}Status: {{ settings.last_sync_status }}<br>{% endif %}
+        {% if settings.last_sync_message %}{{ settings.last_sync_message }}{% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/settings.js"></script>
+{% endblock %}
