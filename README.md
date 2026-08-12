@@ -22,6 +22,25 @@ run full screen on a monitor (kiosk-style).
   Each row is tagged with a `source` column (`manual` or `sheet_sync`) so
   you can always tell where a given date's numbers came from.
 
+## Screenshots
+
+All three below are running against eight weeks of made-up demo data (a
+fictional powerlifter cutting body fat while building toward a target
+total), seeded straight into a scratch database purely to illustrate the
+layout - none of it is real training or health data.
+
+**Dashboard** - lift progress bars, body composition, and trend charts:
+
+![Dashboard with demo data](docs/screenshots/dashboard.png)
+
+**New entry** - the primary way numbers get into the app:
+
+![New entry form](docs/screenshots/entry_form.png)
+
+**Settings** - optional Google Sheet sync configuration:
+
+![Settings page](docs/screenshots/settings.png)
+
 ## How the schema was built
 
 The SQLite schema is generated from the **v1** tab of the source Google
