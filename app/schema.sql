@@ -5,10 +5,11 @@ PRAGMA foreign_keys = ON;
 
 CREATE TABLE IF NOT EXISTS entries (
     id TEXT PRIMARY KEY,            -- UUID4, generated on first insert
-    entry_date TEXT NOT NULL UNIQUE, -- ISO 8601 (YYYY-MM-DD), sourced from a dd/mm/yyyy sheet cell
-    source_row_number INTEGER,       -- row number in the Google Sheet, for traceability
-    created_at TEXT NOT NULL,        -- ISO 8601 UTC timestamp, first sync
-    updated_at TEXT NOT NULL,        -- ISO 8601 UTC timestamp, most recent sync
+    entry_date TEXT NOT NULL UNIQUE, -- ISO 8601 (YYYY-MM-DD), entered as dd/mm/yyyy
+    source TEXT NOT NULL DEFAULT 'manual', -- 'manual' (web UI form) or 'sheet_sync' (dormant Sheets path)
+    source_row_number INTEGER,       -- row number in the Google Sheet, only set for source='sheet_sync'
+    created_at TEXT NOT NULL,        -- ISO 8601 UTC timestamp, first save
+    updated_at TEXT NOT NULL,        -- ISO 8601 UTC timestamp, most recent save
     squat_1rm_current REAL,  -- Goals: Squat 1RM (current) (kg)
     squat_1rm_target REAL,  -- Goals: Squat 1RM (target) (kg)
     squat_1rm_competition REAL,  -- Goals: Squat 1RM (competition) (kg)
@@ -60,7 +61,7 @@ CREATE INDEX IF NOT EXISTS idx_entries_entry_date ON entries(entry_date);
 CREATE TABLE IF NOT EXISTS app_settings (
     id INTEGER PRIMARY KEY CHECK (id = 1),  -- single row
     google_sheet_id TEXT,
-    entries_tab_name TEXT NOT NULL DEFAULT 'v1',
+    entries_tab_name TEXT NOT NULL DEFAULT '',
     date_column_name TEXT NOT NULL DEFAULT 'Date',
     sync_interval_minutes INTEGER NOT NULL DEFAULT 10,
     timezone TEXT NOT NULL DEFAULT 'America/Toronto',
@@ -71,4 +72,4 @@ CREATE TABLE IF NOT EXISTS app_settings (
     updated_at TEXT
 );
 
-INSERT OR IGNORE INTO app_settings (id, entries_tab_name, date_column_name, sync_interval_minutes, timezone) VALUES (1, 'v1', 'Date', 10, 'America/Toronto');
+INSERT OR IGNORE INTO app_settings (id, entries_tab_name, date_column_name, sync_interval_minutes, timezone) VALUES (1, '', 'Date', 10, 'America/Toronto');

@@ -12,7 +12,12 @@ def fetch_tab_values(settings: dict) -> list[list]:
     if not sheet_id:
         raise ValueError("No Google Sheet ID configured. Set it on the Settings page.")
 
-    tab_name = settings.get("entries_tab_name") or "v1"
+    tab_name = settings.get("entries_tab_name")
+    if not tab_name:
+        raise ValueError(
+            "No entries tab name configured. Set it on the Settings page - it should be a "
+            "dated-rows tab, not a metric catalogue/definitions tab."
+        )
     creds = auth_provider.load_credentials(settings)
     service = build("sheets", "v4", credentials=creds, cache_discovery=False)
 

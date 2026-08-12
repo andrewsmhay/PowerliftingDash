@@ -217,6 +217,8 @@ body {
 
 .settings-wrap h1 { font-size: 22px; margin-bottom: 4px; }
 .settings-wrap p.lead { color: var(--text-muted); font-size: 14px; margin-top: 0; margin-bottom: 24px; }
+.settings-wrap p.lead a { color: var(--primary); }
+.settings-wrap p.lead a:hover { color: var(--primary-hover); }
 
 .field-group { margin-bottom: 18px; }
 .field-group label {
@@ -259,6 +261,22 @@ body {
 
 .back-link { color: var(--text-muted); text-decoration: none; font-size: 13px; display: inline-block; margin-bottom: 18px; }
 .back-link:hover { color: var(--text); }
+
+.entry-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 20px;
+}
+
+.nav-link {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.nav-link:hover { color: var(--text); background: var(--surface-alt); }
 
 #save-status { margin-top: 14px; font-size: 13px; color: var(--text-muted); }
 #save-status.ok { color: var(--success); }

@@ -95,15 +95,23 @@ def count_entries() -> int:
         return row["n"] if row else 0
 
 
-def upsert_entry(entry_date_iso: str, source_row_number: int, values: dict) -> str:
+def upsert_entry(
+    entry_date_iso: str,
+    source_row_number: int | None,
+    values: dict,
+    source: str = "manual",
+) -> str:
     """Insert a new entry for entry_date_iso, or update it in place if a row
-    for that date already exists (idempotent re-sync). Returns the row's UUID.
+    for that date already exists (idempotent). Returns the row's UUID.
+
+    `values` may be a partial dict (e.g. only the manually-entered columns);
+    columns not present are left untouched on update, or NULL on insert.
     """
     import uuid
 
     now = datetime.now(timezone.utc).isoformat()
     columns = entry_columns()
-    safe_values = {c: values.get(c) for c in columns}
+    provided = {c: values[c] for c in columns if c in values}
 
     with connection() as conn:
         existing = conn.execute(
@@ -112,20 +120,69 @@ def upsert_entry(entry_date_iso: str, source_row_number: int, values: dict) -> s
 
         if existing:
             entry_id = existing["id"]
-            set_clause = ", ".join(f"{c} = ?" for c in columns)
-            conn.execute(
-                f"UPDATE entries SET {set_clause}, source_row_number = ?, updated_at = ? "
-                "WHERE id = ?",
-                [*safe_values.values(), source_row_number, now, entry_id],
-            )
+            if provided:
+                set_clause = ", ".join(f"{c} = ?" for c in provided)
+                conn.execute(
+                    f"UPDATE entries SET {set_clause}, source = ?, source_row_number = ?, "
+                    "updated_at = ? WHERE id = ?",
+                    [*provided.values(), source, source_row_number, now, entry_id],
+                )
+            else:
+                conn.execute(
+                    "UPDATE entries SET source = ?, source_row_number = ?, updated_at = ? "
+                    "WHERE id = ?",
+                    [source, source_row_number, now, entry_id],
+                )
         else:
             entry_id = str(uuid.uuid4())
+            safe_values = {c: values.get(c) for c in columns}
             col_list = ", ".join(columns)
             placeholders = ", ".join("?" for _ in columns)
             conn.execute(
                 f"INSERT INTO entries "
-                f"(id, entry_date, source_row_number, created_at, updated_at, {col_list}) "
-                f"VALUES (?, ?, ?, ?, ?, {placeholders})",
-                [entry_id, entry_date_iso, source_row_number, now, now, *safe_values.values()],
+                f"(id, entry_date, source, source_row_number, created_at, updated_at, {col_list}) "
+                f"VALUES (?, ?, ?, ?, ?, ?, {placeholders})",
+                [
+                    entry_id,
+                    entry_date_iso,
+                    source,
+                    source_row_number,
+                    now,
+                    now,
+                    *safe_values.values(),
+                ],
             )
         return entry_id
+
+
+def update_computed_columns(entry_id: str, values: dict) -> None:
+    """Writes a dict of computed columns onto an existing entry, without
+    touching updated_at/source (this is a derived-value refresh, not a new
+    save of manually entered data).
+    """
+    if not values:
+        return
+    columns = list(values.keys())
+    set_clause = ", ".join(f"{c} = ?" for c in columns)
+    with connection() as conn:
+        conn.execute(
+            f"UPDATE entries SET {set_clause} WHERE id = ?",
+            [*values.values(), entry_id],
+        )
+
+
+def get_all_entries_asc() -> list[dict]:
+    """Every entry, oldest first - used to recompute baselines for the
+    'to date' family of derived columns.
+    """
+    with connection() as conn:
+        rows = conn.execute("SELECT * FROM entries ORDER BY entry_date ASC").fetchall()
+    return rows
+
+
+def get_entry_by_date(entry_date_iso: str) -> dict | None:
+    with connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM entries WHERE entry_date = ?", (entry_date_iso,)
+        ).fetchone()
+        return row

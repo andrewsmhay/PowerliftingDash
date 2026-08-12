@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}New entry - PowerliftingDash{% endblock %}
+{% block content %}
+<div class="settings-wrap">
+    <a class="back-link" href="/">&larr; Back to dashboard</a>
+    <h1>New entry</h1>
+    <p class="lead">
+        Log today's numbers. Remaining, deltas, totals and "to date" figures are calculated
+        automatically from these values and your history, so you never need to type them in.
+    </p>
+
+    <form id="entry-form">
+        <div class="field-group">
+            <label for="entry_date">Date</label>
+            <input type="text" id="entry_date" name="entry_date" value="{{ today }}"
+                   pattern="\d{1,2}/\d{1,2}/\d{4}" placeholder="dd/mm/yyyy" required>
+            <div class="hint">dd/mm/yyyy. Defaults to today; change it to backfill an earlier date.</div>
+        </div>
+
+        {% for area, fields in areas.items() %}
+        <div class="section-label" style="margin-top:30px;">{{ area }}</div>
+        <div class="entry-field-grid">
+            {% for field in fields %}
+            <div class="field-group">
+                <label for="{{ field.column }}">{{ field.item }}</label>
+                <input type="number" step="any" id="{{ field.column }}" name="{{ field.column }}"
+                       value="{{ latest.get(field.column) if latest.get(field.column) is not none else '' }}"
+                       placeholder="{{ field.measurement_type }}">
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+
+        <button type="submit" class="btn">Save entry</button>
+        <div id="save-status"></div>
+    </form>
+
+    <div class="info-box" style="margin-top:26px;">
+        Entries stored: <strong>{{ entry_count }}</strong>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/entry_form.js"></script>
+{% endblock %}

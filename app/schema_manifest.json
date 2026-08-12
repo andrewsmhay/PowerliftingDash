@@ -365,21 +365,21 @@
       "column": "bmi",
       "area": "Status",
       "item": "BMI",
-      "description": "Current Body Mass Index (BMI)",
+      "description": "Current Body Mass Index (BMI); manually entered from smart scale reading",
       "measurement_type": "kg/m^2",
       "sql_type": "REAL",
-      "configured_in_settings": false,
-      "read_from_new_date_entry": true
+      "configured_in_settings": true,
+      "read_from_new_date_entry": false
     },
     {
       "column": "bmi_target",
       "area": "Status",
       "item": "BMI (target)",
-      "description": "Body Mass Index (target)",
+      "description": "Body Mass Index (target); manually entered goal (no formula input exists for this - see README)",
       "measurement_type": "kg/m^2",
       "sql_type": "REAL",
-      "configured_in_settings": false,
-      "read_from_new_date_entry": true
+      "configured_in_settings": true,
+      "read_from_new_date_entry": false
     },
     {
       "column": "bmi_remaining",
@@ -405,21 +405,21 @@
       "column": "bmr",
       "area": "Status",
       "item": "BMR",
-      "description": "Current Basal Metabolic Rate (BMR)",
+      "description": "Current Basal Metabolic Rate (BMR); manually entered from smart scale reading",
       "measurement_type": "kcal",
       "sql_type": "REAL",
-      "configured_in_settings": false,
-      "read_from_new_date_entry": true
+      "configured_in_settings": true,
+      "read_from_new_date_entry": false
     },
     {
       "column": "bmr_target",
       "area": "Status",
       "item": "BMR (target)",
-      "description": "Base Metabolic Rate (target)",
+      "description": "Base Metabolic Rate (target); manually entered goal (no formula input exists for this - see README)",
       "measurement_type": "kcal",
       "sql_type": "REAL",
-      "configured_in_settings": false,
-      "read_from_new_date_entry": true
+      "configured_in_settings": true,
+      "read_from_new_date_entry": false
     },
     {
       "column": "bmr_remaining",

@@ -85,10 +85,11 @@ def build_sql(columns):
         "",
         "CREATE TABLE IF NOT EXISTS entries (",
         "    id TEXT PRIMARY KEY,            -- UUID4, generated on first insert",
-        "    entry_date TEXT NOT NULL UNIQUE, -- ISO 8601 (YYYY-MM-DD), sourced from a dd/mm/yyyy sheet cell",
-        "    source_row_number INTEGER,       -- row number in the Google Sheet, for traceability",
-        "    created_at TEXT NOT NULL,        -- ISO 8601 UTC timestamp, first sync",
-        "    updated_at TEXT NOT NULL,        -- ISO 8601 UTC timestamp, most recent sync",
+        "    entry_date TEXT NOT NULL UNIQUE, -- ISO 8601 (YYYY-MM-DD), entered as dd/mm/yyyy",
+        "    source TEXT NOT NULL DEFAULT 'manual', -- 'manual' (web UI form) or 'sheet_sync' (dormant Sheets path)",
+        "    source_row_number INTEGER,       -- row number in the Google Sheet, only set for source='sheet_sync'",
+        "    created_at TEXT NOT NULL,        -- ISO 8601 UTC timestamp, first save",
+        "    updated_at TEXT NOT NULL,        -- ISO 8601 UTC timestamp, most recent save",
     ]
     for i, col in enumerate(columns):
         trailing_comma = "," if i < len(columns) - 1 else ""
@@ -103,7 +104,7 @@ def build_sql(columns):
     lines.append("CREATE TABLE IF NOT EXISTS app_settings (")
     lines.append("    id INTEGER PRIMARY KEY CHECK (id = 1),  -- single row")
     lines.append("    google_sheet_id TEXT,")
-    lines.append("    entries_tab_name TEXT NOT NULL DEFAULT 'v1',")
+    lines.append("    entries_tab_name TEXT NOT NULL DEFAULT '',")
     lines.append("    date_column_name TEXT NOT NULL DEFAULT 'Date',")
     lines.append("    sync_interval_minutes INTEGER NOT NULL DEFAULT 10,")
     lines.append("    timezone TEXT NOT NULL DEFAULT 'America/Toronto',")
@@ -116,7 +117,7 @@ def build_sql(columns):
     lines.append("")
     lines.append(
         "INSERT OR IGNORE INTO app_settings (id, entries_tab_name, date_column_name, sync_interval_minutes, timezone) "
-        "VALUES (1, 'v1', 'Date', 10, 'America/Toronto');"
+        "VALUES (1, '', 'Date', 10, 'America/Toronto');"
     )
     lines.append("")
     return "\n".join(lines)

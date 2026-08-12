@@ -35,11 +35,11 @@ Status,Percent Body Fat,Current percent body fat,%,True,False
 Status,Percent Body Fat (target),Target body fat percentage,%,True,False
 Status,Percent Body Fat (remaining),Remaining percentage to hit body fat percentage target,%,False,True
 Status,Percentage Body Fat (to date),Total percentage of body fat lost or gained since start,%,False,True
-Status,BMI,Current Body Mass Index (BMI),kg/m^2,False,True
-Status,BMI (target),Body Mass Index (target),kg/m^2,False,True
+Status,BMI,Current Body Mass Index (BMI); manually entered from smart scale reading,kg/m^2,True,False
+Status,BMI (target),Body Mass Index (target); manually entered goal (no formula input exists for this - see README),kg/m^2,True,False
 Status,BMI (remaining),Remaining BM to hit target index,kg,False,True
 Status,BMI (to date),Total of BMI lost or gained since start,kg,False,True
-Status,BMR,Current Basal Metabolic Rate (BMR),kcal,False,True
-Status,BMR (target),Base Metabolic Rate (target),kcal,False,True
+Status,BMR,Current Basal Metabolic Rate (BMR); manually entered from smart scale reading,kcal,True,False
+Status,BMR (target),Base Metabolic Rate (target); manually entered goal (no formula input exists for this - see README),kcal,True,False
 Status,BMR (remaining),Remaining BM to hit target rate,kcal,False,True
 Status,BMR (to date),Total of BMR lost or gained since start,kcal,False,True

@@ -1,6 +1,12 @@
 """Pulls the configured Google Sheet tab, maps its header row onto the
 generated schema columns, and upserts one SQLite row per dated entry.
 
+Dormant by default: manual entry via the web UI (see routes/entries.py) is
+now the primary way data gets into PowerliftingDash. This module only runs
+if a `google_sheet_id` is set in Settings (the scheduler skips it entirely
+otherwise), for anyone who wants to feed a sheet-based source into the same
+`entries` table instead of/alongside typing values into the app.
+
 Column matching: sheet headers are normalised the same way
 schema/generate_schema.py normalises Item names, so a header cell of
 "Squat 1RM (current)" matches the `squat_1rm_current` column without
@@ -12,6 +18,7 @@ from datetime import datetime, timezone
 
 from . import db
 from .date_utils import DateParseError, parse_sheet_date, to_iso
+from .numeric import coerce_numeric as _coerce_numeric
 from .sheets_client import fetch_tab_values
 
 logger = logging.getLogger("powerliftingdash.sync")
@@ -53,19 +60,6 @@ def _build_column_index(header_row: list[str], date_column_name: str) -> tuple[i
 
     return date_idx, mapped
 
-
-def _coerce_numeric(raw):
-    if raw is None or raw == "":
-        return None
-    if isinstance(raw, (int, float)):
-        return float(raw)
-    text = str(raw).strip().replace(",", "")
-    if text == "":
-        return None
-    try:
-        return float(text)
-    except ValueError:
-        return None
 
 
 def run_sync() -> dict:
@@ -123,7 +117,7 @@ def run_sync() -> dict:
             cell = row[col_idx] if col_idx < len(row) else None
             values[column_name] = _coerce_numeric(cell)
 
-        db.upsert_entry(to_iso(entry_date), row_number, values)
+        db.upsert_entry(to_iso(entry_date), row_number, values, source="sheet_sync")
         upserted += 1
 
     duration = (datetime.now(timezone.utc) - started).total_seconds()
@@ -133,6 +127,11 @@ def run_sync() -> dict:
         message += f". Issues: {'; '.join(errors[:5])}"
         if len(errors) > 5:
             message += f" (+{len(errors) - 5} more)"
+
+    if upserted:
+        from . import derive
+
+        derive.recompute_all()
 
     db.record_sync_result(status, message)
     logger.info(message)

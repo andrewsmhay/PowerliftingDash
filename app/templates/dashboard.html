@@ -9,14 +9,15 @@
         </div>
     </div>
     <div class="status-cluster">
+        <a class="nav-link" href="/entries/new">+ New entry</a>
         <span id="sync-status"><span class="status-dot"></span><span id="sync-status-text">--</span></span>
         <a class="gear-link" href="/settings" title="Settings">&#9881;</a>
     </div>
 </div>
 
-{% if not has_sheet %}
+{% if not data.latest_entry_date %}
 <div class="empty-state">
-    No Google Sheet configured yet. Head to <a href="/settings">Settings</a> to connect the sheet this dashboard should sync from.
+    No entries yet. <a href="/entries/new">Log your first entry</a> to start the dashboard.
 </div>
 {% endif %}
 

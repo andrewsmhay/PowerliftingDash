@@ -11,14 +11,12 @@ def dashboard(request: Request):
     latest = db.get_latest_entry()
     history = db.get_entries(limit=180)
     payload = metrics.build_dashboard_payload(latest, history)
-    settings = db.get_settings()
     return request.app.state.templates.TemplateResponse(
         "dashboard.html",
         {
             "request": request,
             "data": payload,
             "poll_seconds": config.DASHBOARD_POLL_SECONDS,
-            "has_sheet": bool(settings.get("google_sheet_id")),
         },
     )
 

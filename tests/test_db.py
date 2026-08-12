@@ -53,3 +53,36 @@ def test_settings_round_trip(monkeypatch):
 
     assert settings["google_sheet_id"] == "abc123"
     assert settings["sync_interval_minutes"] == 15
+
+
+def test_upsert_entry_defaults_source_to_manual(monkeypatch):
+    db = make_temp_db(monkeypatch)
+
+    db.upsert_entry("2026-08-01", None, {"squat_1rm_current": 150.0})
+
+    latest = db.get_latest_entry()
+    assert latest["source"] == "manual"
+
+
+def test_upsert_entry_records_sheet_sync_source(monkeypatch):
+    db = make_temp_db(monkeypatch)
+
+    db.upsert_entry(
+        "2026-08-01", 2, {"squat_1rm_current": 150.0}, source="sheet_sync"
+    )
+
+    latest = db.get_latest_entry()
+    assert latest["source"] == "sheet_sync"
+
+
+def test_manual_save_overwrites_sheet_sync_source_for_same_date(monkeypatch):
+    db = make_temp_db(monkeypatch)
+
+    db.upsert_entry(
+        "2026-08-01", 2, {"squat_1rm_current": 150.0}, source="sheet_sync"
+    )
+    db.upsert_entry("2026-08-01", None, {"squat_1rm_current": 155.0}, source="manual")
+
+    latest = db.get_latest_entry()
+    assert latest["source"] == "manual"
+    assert latest["squat_1rm_current"] == 155.0
