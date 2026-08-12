@@ -10,7 +10,8 @@ router = APIRouter()
 def dashboard(request: Request):
     latest = db.get_latest_entry()
     history = db.get_entries(limit=180)
-    payload = metrics.build_dashboard_payload(latest, history)
+    app_config = db.get_config()
+    payload = metrics.build_dashboard_payload(latest, history, app_config)
     return request.app.state.templates.TemplateResponse(
         "dashboard.html",
         {

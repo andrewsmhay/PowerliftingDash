@@ -2,6 +2,12 @@
 templates and JSON API render: lift cards, body composition cards, and
 BMI/BMR cards, each with current/target/competition/remaining values and a
 progress percentage where that makes sense.
+
+Current values (and every derived remaining/delta/to-date figure) come from
+the entry row. Target and competition values are hardcoded goals from the
+/targets screen, so they come from a `config` dict (`db.get_config()`)
+instead - the same config snapshot applies regardless of which entry is
+being shown.
 """
 
 LIFTS = [
@@ -40,13 +46,14 @@ def _progress_pct(current, target):
     return max(0, min(100, round(pct, 1)))
 
 
-def build_lift_cards(entry: dict | None) -> list[dict]:
+def build_lift_cards(entry: dict | None, config: dict | None = None) -> list[dict]:
+    config = config or {}
     cards = []
     for lift in LIFTS:
         key = lift["key"]
         current = _safe((entry or {}).get(f"{key}_1rm_current"))
-        target = _safe((entry or {}).get(f"{key}_1rm_target"))
-        competition = _safe((entry or {}).get(f"{key}_1rm_competition"))
+        target = _safe(config.get(f"{key}_1rm_target"))
+        competition = _safe(config.get(f"{key}_1rm_competition"))
         remaining = _safe((entry or {}).get(f"{key}_1rm_remaining"))
         delta = _safe((entry or {}).get(f"{key}_1rm_competition_delta"))
         cards.append(
@@ -81,13 +88,14 @@ def build_total_card(entry: dict | None) -> dict:
     }
 
 
-def build_body_cards(entry: dict | None) -> list[dict]:
+def build_body_cards(entry: dict | None, config: dict | None = None) -> list[dict]:
     entry = entry or {}
+    config = config or {}
     cards = []
     for metric in BODY_METRICS:
         key = metric["key"]
         current = _safe(entry.get(key))
-        target = _safe(entry.get(f"{key}_target"))
+        target = _safe(config.get(f"{key}_target"))
         remaining = _safe(entry.get(f"{key}_remaining"))
         to_date = _safe(entry.get(f"{key}_to_date"))
         cards.append(
@@ -104,34 +112,38 @@ def build_body_cards(entry: dict | None) -> list[dict]:
     return cards
 
 
-def build_index_cards(entry: dict | None) -> list[dict]:
+def build_index_cards(entry: dict | None, config: dict | None = None) -> list[dict]:
     entry = entry or {}
+    config = config or {}
     return [
         {
             "label": "BMI",
             "unit": "kg/m\u00b2",
             "current": _safe(entry.get("bmi")),
-            "target": _safe(entry.get("bmi_target")),
+            "target": _safe(config.get("bmi_target")),
             "to_date": _safe(entry.get("bmi_to_date")),
         },
         {
             "label": "BMR",
             "unit": "kcal",
             "current": _safe(entry.get("bmr")),
-            "target": _safe(entry.get("bmr_target")),
+            "target": _safe(config.get("bmr_target")),
             "to_date": _safe(entry.get("bmr_to_date")),
         },
     ]
 
 
-def build_dashboard_payload(latest_entry: dict | None, history: list[dict]) -> dict:
+def build_dashboard_payload(
+    latest_entry: dict | None, history: list[dict], config: dict | None = None
+) -> dict:
+    config = config or {}
     return {
         "latest_entry_date": (latest_entry or {}).get("entry_date"),
-        "lift_cards": build_lift_cards(latest_entry),
+        "lift_cards": build_lift_cards(latest_entry, config),
         "total_card": build_total_card(latest_entry),
         "weight_change_since_comp": _safe((latest_entry or {}).get("weight_change_since_comp")),
-        "body_cards": build_body_cards(latest_entry),
-        "index_cards": build_index_cards(latest_entry),
+        "body_cards": build_body_cards(latest_entry, config),
+        "index_cards": build_index_cards(latest_entry, config),
         "history": [
             {
                 "entry_date": row["entry_date"],

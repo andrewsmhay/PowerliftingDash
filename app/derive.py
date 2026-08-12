@@ -30,6 +30,22 @@ would go stale the moment an earlier date is backfilled), `recompute_all()`
 reloads every entry, recomputes every derived column for every row, and
 writes them all back. The dataset is a personal daily log, so this is cheap
 and removes an entire class of staleness bugs.
+
+Target and competition config
+------------------------------
+All "target" and "competition" values (the 12 columns listed in
+schema_manifest.json with storage="app_settings") are hardcoded on the
+/targets screen, not entered per date - Andrew sets a goal once and it
+stays put until he changes it again. They live as scalar columns on the
+single `app_settings` row (see `db.get_config()`), not on `entries`.
+
+Because config is unversioned (there is no historical record of what the
+target used to be on a past date), `recompute_all()` reads *today's*
+config snapshot once and applies it uniformly when recomputing every row,
+past and present. This means "remaining"/"competition delta"/"to date"
+figures for old dates reflect the current goal, not whatever goal was in
+place on that date - the correct reading of "hardcoded, not adjusted as
+new entries each time".
 """
 from . import db
 
@@ -91,33 +107,36 @@ def _sum(*values):
     return sum(values)
 
 
-def compute_row_derived(row: dict, baselines: dict) -> dict:
+def compute_row_derived(row: dict, baselines: dict, config: dict) -> dict:
     """Computes every derived column for a single row.
 
-    `row` is the full entry dict (manual columns already populated).
+    `row` is the full entry dict (manual, daily columns already populated).
     `baselines` maps manual column name -> its earliest recorded value
     across the whole history (see `_compute_baselines`).
+    `config` is the current target/competition snapshot from `app_settings`
+    (see `db.get_config()`) - the same dict is used for every row, since
+    these values are hardcoded on /targets rather than tracked per date.
     """
     out: dict = {}
 
     for derived_col, (target_col, current_col) in _REMAINING_PAIRS.items():
-        out[derived_col] = _sub(row.get(target_col), row.get(current_col))
+        out[derived_col] = _sub(config.get(target_col), row.get(current_col))
 
     for derived_col, (current_col, competition_col) in _COMPETITION_DELTA_PAIRS.items():
-        out[derived_col] = _sub(row.get(current_col), row.get(competition_col))
+        out[derived_col] = _sub(row.get(current_col), config.get(competition_col))
 
     out["total_weight_lifted_target"] = _sum(
-        row.get("squat_1rm_target"), row.get("bench_1rm_target"), row.get("deadlift_1rm_target")
+        config.get("squat_1rm_target"), config.get("bench_1rm_target"), config.get("deadlift_1rm_target")
     ) if all(
-        row.get(c) is not None
+        config.get(c) is not None
         for c in ("squat_1rm_target", "bench_1rm_target", "deadlift_1rm_target")
     ) else None
     out["total_weight_lifted_in_competition"] = _sum(
-        row.get("squat_1rm_competition"),
-        row.get("bench_1rm_competition"),
-        row.get("deadlift_1rm_competition"),
+        config.get("squat_1rm_competition"),
+        config.get("bench_1rm_competition"),
+        config.get("deadlift_1rm_competition"),
     ) if all(
-        row.get(c) is not None
+        config.get(c) is not None
         for c in ("squat_1rm_competition", "bench_1rm_competition", "deadlift_1rm_competition")
     ) else None
     out["total_weight_lifted_current"] = _sum(
@@ -158,16 +177,21 @@ def _compute_baselines(entries_asc: list[dict]) -> dict:
 def recompute_all() -> int:
     """Recomputes and persists derived columns for every entry. Returns the
     number of rows updated.
+
+    Call this after every entry save AND after every /targets save - a
+    changed target or competition value invalidates every stored
+    remaining/delta/to-date figure, not just the latest entry.
     """
     entries_asc = db.get_all_entries_asc()
     if not entries_asc:
         return 0
 
     baselines = _compute_baselines(entries_asc)
+    config = db.get_config()
 
     updated = 0
     for row in entries_asc:
-        derived = compute_row_derived(row, baselines)
+        derived = compute_row_derived(row, baselines, config)
         db.update_computed_columns(row["id"], derived)
         updated += 1
     return updated

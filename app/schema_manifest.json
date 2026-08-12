@@ -9,7 +9,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": true,
-      "read_from_new_date_entry": false
+      "read_from_new_date_entry": false,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "squat_1rm_target",
@@ -19,7 +21,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": true,
-      "read_from_new_date_entry": false
+      "read_from_new_date_entry": false,
+      "is_config": true,
+      "storage": "app_settings"
     },
     {
       "column": "squat_1rm_competition",
@@ -29,7 +33,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": true,
-      "read_from_new_date_entry": false
+      "read_from_new_date_entry": false,
+      "is_config": true,
+      "storage": "app_settings"
     },
     {
       "column": "squat_1rm_remaining",
@@ -39,7 +45,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": false,
-      "read_from_new_date_entry": true
+      "read_from_new_date_entry": true,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "squat_1rm_competition_delta",
@@ -49,7 +57,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": false,
-      "read_from_new_date_entry": true
+      "read_from_new_date_entry": true,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "bench_1rm_current",
@@ -59,7 +69,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": true,
-      "read_from_new_date_entry": false
+      "read_from_new_date_entry": false,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "bench_1rm_target",
@@ -69,7 +81,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": true,
-      "read_from_new_date_entry": false
+      "read_from_new_date_entry": false,
+      "is_config": true,
+      "storage": "app_settings"
     },
     {
       "column": "bench_1rm_competition",
@@ -79,7 +93,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": true,
-      "read_from_new_date_entry": false
+      "read_from_new_date_entry": false,
+      "is_config": true,
+      "storage": "app_settings"
     },
     {
       "column": "bench_1rm_remaining",
@@ -89,7 +105,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": false,
-      "read_from_new_date_entry": true
+      "read_from_new_date_entry": true,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "bench_1rm_competition_delta",
@@ -99,7 +117,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": false,
-      "read_from_new_date_entry": true
+      "read_from_new_date_entry": true,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "deadlift_1rm_current",
@@ -109,7 +129,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": true,
-      "read_from_new_date_entry": false
+      "read_from_new_date_entry": false,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "deadlift_1rm_target",
@@ -119,7 +141,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": true,
-      "read_from_new_date_entry": false
+      "read_from_new_date_entry": false,
+      "is_config": true,
+      "storage": "app_settings"
     },
     {
       "column": "deadlift_1rm_competition",
@@ -129,7 +153,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": true,
-      "read_from_new_date_entry": false
+      "read_from_new_date_entry": false,
+      "is_config": true,
+      "storage": "app_settings"
     },
     {
       "column": "deadlift_1rm_remaining",
@@ -139,7 +165,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": false,
-      "read_from_new_date_entry": true
+      "read_from_new_date_entry": true,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "deadlift_1rm_competition_delta",
@@ -149,7 +177,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": false,
-      "read_from_new_date_entry": true
+      "read_from_new_date_entry": true,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "total_weight_lifted_target",
@@ -159,7 +189,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": false,
-      "read_from_new_date_entry": true
+      "read_from_new_date_entry": true,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "total_weight_lifted_in_competition",
@@ -169,7 +201,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": false,
-      "read_from_new_date_entry": true
+      "read_from_new_date_entry": true,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "total_weight_lifted_current",
@@ -179,7 +213,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": false,
-      "read_from_new_date_entry": true
+      "read_from_new_date_entry": true,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "total_weight_lifted_remaining",
@@ -189,7 +225,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": false,
-      "read_from_new_date_entry": true
+      "read_from_new_date_entry": true,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "weight_change_since_comp",
@@ -199,7 +237,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": false,
-      "read_from_new_date_entry": true
+      "read_from_new_date_entry": true,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "body_weight_mass",
@@ -209,7 +249,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": true,
-      "read_from_new_date_entry": false
+      "read_from_new_date_entry": false,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "body_weight_mass_target",
@@ -219,7 +261,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": true,
-      "read_from_new_date_entry": false
+      "read_from_new_date_entry": false,
+      "is_config": true,
+      "storage": "app_settings"
     },
     {
       "column": "body_weight_mass_remaining",
@@ -229,7 +273,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": false,
-      "read_from_new_date_entry": true
+      "read_from_new_date_entry": true,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "body_weight_mass_to_date",
@@ -239,7 +285,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": false,
-      "read_from_new_date_entry": true
+      "read_from_new_date_entry": true,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "skeletal_muscle_mass",
@@ -249,7 +297,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": true,
-      "read_from_new_date_entry": false
+      "read_from_new_date_entry": false,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "skeletal_muscle_mass_target",
@@ -259,7 +309,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": true,
-      "read_from_new_date_entry": false
+      "read_from_new_date_entry": false,
+      "is_config": true,
+      "storage": "app_settings"
     },
     {
       "column": "skeletal_muscle_mass_remaining",
@@ -269,7 +321,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": false,
-      "read_from_new_date_entry": true
+      "read_from_new_date_entry": true,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "skeletal_muscle_mass_to_date",
@@ -279,7 +333,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": false,
-      "read_from_new_date_entry": true
+      "read_from_new_date_entry": true,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "body_fat_mass",
@@ -289,7 +345,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": true,
-      "read_from_new_date_entry": false
+      "read_from_new_date_entry": false,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "body_fat_mass_target",
@@ -299,7 +357,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": true,
-      "read_from_new_date_entry": false
+      "read_from_new_date_entry": false,
+      "is_config": true,
+      "storage": "app_settings"
     },
     {
       "column": "body_fat_mass_remaining",
@@ -309,7 +369,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": false,
-      "read_from_new_date_entry": true
+      "read_from_new_date_entry": true,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "body_fat_mass_to_date",
@@ -319,7 +381,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": false,
-      "read_from_new_date_entry": true
+      "read_from_new_date_entry": true,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "percent_body_fat",
@@ -329,7 +393,9 @@
       "measurement_type": "%",
       "sql_type": "REAL",
       "configured_in_settings": true,
-      "read_from_new_date_entry": false
+      "read_from_new_date_entry": false,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "percent_body_fat_target",
@@ -339,7 +405,9 @@
       "measurement_type": "%",
       "sql_type": "REAL",
       "configured_in_settings": true,
-      "read_from_new_date_entry": false
+      "read_from_new_date_entry": false,
+      "is_config": true,
+      "storage": "app_settings"
     },
     {
       "column": "percent_body_fat_remaining",
@@ -349,7 +417,9 @@
       "measurement_type": "%",
       "sql_type": "REAL",
       "configured_in_settings": false,
-      "read_from_new_date_entry": true
+      "read_from_new_date_entry": true,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "percent_body_fat_to_date",
@@ -359,7 +429,9 @@
       "measurement_type": "%",
       "sql_type": "REAL",
       "configured_in_settings": false,
-      "read_from_new_date_entry": true
+      "read_from_new_date_entry": true,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "bmi",
@@ -369,7 +441,9 @@
       "measurement_type": "kg/m^2",
       "sql_type": "REAL",
       "configured_in_settings": true,
-      "read_from_new_date_entry": false
+      "read_from_new_date_entry": false,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "bmi_target",
@@ -379,7 +453,9 @@
       "measurement_type": "kg/m^2",
       "sql_type": "REAL",
       "configured_in_settings": true,
-      "read_from_new_date_entry": false
+      "read_from_new_date_entry": false,
+      "is_config": true,
+      "storage": "app_settings"
     },
     {
       "column": "bmi_remaining",
@@ -389,7 +465,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": false,
-      "read_from_new_date_entry": true
+      "read_from_new_date_entry": true,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "bmi_to_date",
@@ -399,7 +477,9 @@
       "measurement_type": "kg",
       "sql_type": "REAL",
       "configured_in_settings": false,
-      "read_from_new_date_entry": true
+      "read_from_new_date_entry": true,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "bmr",
@@ -409,7 +489,9 @@
       "measurement_type": "kcal",
       "sql_type": "REAL",
       "configured_in_settings": true,
-      "read_from_new_date_entry": false
+      "read_from_new_date_entry": false,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "bmr_target",
@@ -419,7 +501,9 @@
       "measurement_type": "kcal",
       "sql_type": "REAL",
       "configured_in_settings": true,
-      "read_from_new_date_entry": false
+      "read_from_new_date_entry": false,
+      "is_config": true,
+      "storage": "app_settings"
     },
     {
       "column": "bmr_remaining",
@@ -429,7 +513,9 @@
       "measurement_type": "kcal",
       "sql_type": "REAL",
       "configured_in_settings": false,
-      "read_from_new_date_entry": true
+      "read_from_new_date_entry": true,
+      "is_config": false,
+      "storage": "entries"
     },
     {
       "column": "bmr_to_date",
@@ -439,7 +525,9 @@
       "measurement_type": "kcal",
       "sql_type": "REAL",
       "configured_in_settings": false,
-      "read_from_new_date_entry": true
+      "read_from_new_date_entry": true,
+      "is_config": false,
+      "storage": "entries"
     }
   ]
 }

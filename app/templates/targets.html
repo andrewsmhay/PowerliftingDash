@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Targets - PowerliftingDash{% endblock %}
+{% block content %}
+<div class="settings-wrap">
+    <a class="back-link" href="/">&larr; Back to dashboard</a>
+    <h1>Targets &amp; competition</h1>
+    <p class="lead">
+        These are one-off goals, not daily readings, so they live here rather than on the
+        <a href="/entries/new">New entry</a> form. Save a change here and every remaining/delta
+        figure on the dashboard recalculates automatically, including for past entries.
+    </p>
+
+    <form id="targets-form">
+        {% for area, fields in areas.items() %}
+        <div class="section-label" style="margin-top:30px;">{{ area }}</div>
+        <div class="entry-field-grid">
+            {% for field in fields %}
+            <div class="field-group">
+                <label for="{{ field.column }}">{{ field.item }}</label>
+                <input type="number" step="any" id="{{ field.column }}" name="{{ field.column }}"
+                       value="{{ config.get(field.column) if config.get(field.column) is not none else '' }}"
+                       placeholder="{{ field.measurement_type }}">
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+
+        <button type="submit" class="btn">Save targets</button>
+        <div id="save-status"></div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/targets.js"></script>
+{% endblock %}

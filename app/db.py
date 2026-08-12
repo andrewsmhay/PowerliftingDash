@@ -34,10 +34,24 @@ def connection():
 
 
 def init_db() -> None:
-    """Creates tables from schema.sql if they don't already exist."""
+    """Creates tables from schema.sql if they don't already exist, then runs
+    the small idempotent migrations below for databases created by an older
+    version of this app.
+
+    `CREATE TABLE IF NOT EXISTS` is a no-op on a table that already exists,
+    so introducing new `app_settings` columns (the target/competition config
+    fields) would otherwise silently fail to appear on an existing database
+    and the first write to them would crash. `_ensure_config_columns` adds
+    any missing ones with `ALTER TABLE ... ADD COLUMN`, and
+    `_backfill_config_from_latest_entry` seeds them from whatever
+    target/competition values were last saved on an entry row, so upgrading
+    does not silently blank out Andrew's existing goals.
+    """
     sql = config.SCHEMA_SQL_PATH.read_text()
     with connection() as conn:
         conn.executescript(sql)
+    _ensure_config_columns()
+    _backfill_config_from_latest_entry()
 
 
 def load_manifest() -> list[dict]:
@@ -45,7 +59,89 @@ def load_manifest() -> list[dict]:
 
 
 def entry_columns() -> list[str]:
-    return [c["column"] for c in load_manifest()]
+    """Columns on the `entries` table: daily manual readings plus every
+    derived column. Excludes target/competition config, which lives on
+    `app_settings` instead (see `config_columns`).
+    """
+    return [c["column"] for c in load_manifest() if c.get("storage", "entries") == "entries"]
+
+
+def config_columns() -> list[dict]:
+    """Manifest entries for the hardcoded target/competition fields that
+    live on `app_settings`, edited from the /targets screen.
+    """
+    return [c for c in load_manifest() if c.get("storage") == "app_settings"]
+
+
+def _ensure_config_columns() -> None:
+    """Adds any target/competition columns missing from an existing
+    `app_settings` table (idempotent - safe to run on every startup).
+    """
+    with connection() as conn:
+        existing = {
+            row["name"] for row in conn.execute("PRAGMA table_info(app_settings)").fetchall()
+        }
+        for col in config_columns():
+            if col["column"] not in existing:
+                conn.execute(f"ALTER TABLE app_settings ADD COLUMN {col['column']} {col['sql_type']}")
+
+
+def _backfill_config_from_latest_entry() -> None:
+    """One-time seed: if a target/competition config column is still NULL
+    but the most recent entry row has a (legacy) value under the same
+    column name, copy it across. Only runs while the columns themselves are
+    genuinely unset, so it never overwrites a value Andrew has already
+    configured on /targets.
+    """
+    cols = [c["column"] for c in config_columns()]
+    if not cols:
+        return
+    with connection() as conn:
+        settings_row = conn.execute("SELECT * FROM app_settings WHERE id = 1").fetchone() or {}
+        if all(settings_row.get(c) is not None for c in cols):
+            return  # already fully configured, nothing to backfill
+
+        table_cols = {
+            row["name"] for row in conn.execute("PRAGMA table_info(entries)").fetchall()
+        }
+        legacy_cols = [c for c in cols if c in table_cols]
+        if not legacy_cols:
+            return
+
+        latest = conn.execute(
+            f"SELECT {', '.join(legacy_cols)} FROM entries ORDER BY entry_date DESC LIMIT 1"
+        ).fetchone()
+        if not latest:
+            return
+
+        to_backfill = {
+            c: latest[c]
+            for c in legacy_cols
+            if settings_row.get(c) is None and latest.get(c) is not None
+        }
+        if not to_backfill:
+            return
+
+        set_clause = ", ".join(f"{c} = ?" for c in to_backfill)
+        conn.execute(f"UPDATE app_settings SET {set_clause} WHERE id = 1", list(to_backfill.values()))
+
+
+def get_config() -> dict:
+    """Current target/competition values, as configured on /targets."""
+    cols = [c["column"] for c in config_columns()]
+    with connection() as conn:
+        row = conn.execute(f"SELECT {', '.join(cols)} FROM app_settings WHERE id = 1").fetchone()
+        return row or {}
+
+
+def update_config(**fields) -> None:
+    """Saves target/competition values. Silently ignores any key that is not
+    a known config column, so callers cannot accidentally write into an
+    unrelated app_settings field via this path.
+    """
+    valid = {c["column"] for c in config_columns()}
+    fields = {k: v for k, v in fields.items() if k in valid}
+    update_settings(**fields)
 
 
 def get_settings() -> dict:

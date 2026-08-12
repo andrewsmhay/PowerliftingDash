@@ -11,18 +11,12 @@ CREATE TABLE IF NOT EXISTS entries (
     created_at TEXT NOT NULL,        -- ISO 8601 UTC timestamp, first save
     updated_at TEXT NOT NULL,        -- ISO 8601 UTC timestamp, most recent save
     squat_1rm_current REAL,  -- Goals: Squat 1RM (current) (kg)
-    squat_1rm_target REAL,  -- Goals: Squat 1RM (target) (kg)
-    squat_1rm_competition REAL,  -- Goals: Squat 1RM (competition) (kg)
     squat_1rm_remaining REAL,  -- Goals: Squat 1RM (remaining) (kg)
     squat_1rm_competition_delta REAL,  -- Goals: Squat 1RM (competition delta) (kg)
     bench_1rm_current REAL,  -- Goals: Bench 1RM (current) (kg)
-    bench_1rm_target REAL,  -- Goals: Bench 1RM (target) (kg)
-    bench_1rm_competition REAL,  -- Goals: Bench 1RM (competition) (kg)
     bench_1rm_remaining REAL,  -- Goals: Bench 1RM (remaining) (kg)
     bench_1rm_competition_delta REAL,  -- Goals: Bench 1RM (competition delta) (kg)
     deadlift_1rm_current REAL,  -- Goals: Deadlift 1RM (current) (kg)
-    deadlift_1rm_target REAL,  -- Goals: Deadlift 1RM (target) (kg)
-    deadlift_1rm_competition REAL,  -- Goals: Deadlift 1RM (competition) (kg)
     deadlift_1rm_remaining REAL,  -- Goals: Deadlift 1RM (remaining) (kg)
     deadlift_1rm_competition_delta REAL,  -- Goals: Deadlift 1RM (competition delta) (kg)
     total_weight_lifted_target REAL,  -- Goals: Total Weight Lifted (target) (kg)
@@ -31,27 +25,21 @@ CREATE TABLE IF NOT EXISTS entries (
     total_weight_lifted_remaining REAL,  -- Goals: Total Weight Lifted (remaining) (kg)
     weight_change_since_comp REAL,  -- Goals: Weight Change Since Comp (kg)
     body_weight_mass REAL,  -- Status: Body Weight Mass (kg)
-    body_weight_mass_target REAL,  -- Status: Body Weight Mass (target) (kg)
     body_weight_mass_remaining REAL,  -- Status: Body Weight Mass (remaining) (kg)
     body_weight_mass_to_date REAL,  -- Status: Body Weight Mass (to date) (kg)
     skeletal_muscle_mass REAL,  -- Status: Skeletal Muscle Mass (kg)
-    skeletal_muscle_mass_target REAL,  -- Status: Skeletal Muscle Mass (target) (kg)
     skeletal_muscle_mass_remaining REAL,  -- Status: Skeletal Muscle Mass (remaining) (kg)
     skeletal_muscle_mass_to_date REAL,  -- Status: Skeletal Muscle Mass (to date) (kg)
     body_fat_mass REAL,  -- Status: Body Fat Mass (kg)
-    body_fat_mass_target REAL,  -- Status: Body Fat Mass (target) (kg)
     body_fat_mass_remaining REAL,  -- Status: Body Fat Mass (remaining) (kg)
     body_fat_mass_to_date REAL,  -- Status: Body Fat Mass (to date) (kg)
     percent_body_fat REAL,  -- Status: Percent Body Fat (%)
-    percent_body_fat_target REAL,  -- Status: Percent Body Fat (target) (%)
     percent_body_fat_remaining REAL,  -- Status: Percent Body Fat (remaining) (%)
     percent_body_fat_to_date REAL,  -- Status: Percentage Body Fat (to date) (%)
     bmi REAL,  -- Status: BMI (kg/m^2)
-    bmi_target REAL,  -- Status: BMI (target) (kg/m^2)
     bmi_remaining REAL,  -- Status: BMI (remaining) (kg)
     bmi_to_date REAL,  -- Status: BMI (to date) (kg)
     bmr REAL,  -- Status: BMR (kcal)
-    bmr_target REAL,  -- Status: BMR (target) (kcal)
     bmr_remaining REAL,  -- Status: BMR (remaining) (kcal)
     bmr_to_date REAL  -- Status: BMR (to date) (kcal)
 );
@@ -69,6 +57,18 @@ CREATE TABLE IF NOT EXISTS app_settings (
     last_sync_at TEXT,
     last_sync_status TEXT,
     last_sync_message TEXT,
+    squat_1rm_target REAL,  -- Goals: Squat 1RM (target) (kg) - set on /targets
+    squat_1rm_competition REAL,  -- Goals: Squat 1RM (competition) (kg) - set on /targets
+    bench_1rm_target REAL,  -- Goals: Bench 1RM (target) (kg) - set on /targets
+    bench_1rm_competition REAL,  -- Goals: Bench 1RM (competition) (kg) - set on /targets
+    deadlift_1rm_target REAL,  -- Goals: Deadlift 1RM (target) (kg) - set on /targets
+    deadlift_1rm_competition REAL,  -- Goals: Deadlift 1RM (competition) (kg) - set on /targets
+    body_weight_mass_target REAL,  -- Status: Body Weight Mass (target) (kg) - set on /targets
+    skeletal_muscle_mass_target REAL,  -- Status: Skeletal Muscle Mass (target) (kg) - set on /targets
+    body_fat_mass_target REAL,  -- Status: Body Fat Mass (target) (kg) - set on /targets
+    percent_body_fat_target REAL,  -- Status: Percent Body Fat (target) (%) - set on /targets
+    bmi_target REAL,  -- Status: BMI (target) (kg/m^2) - set on /targets
+    bmr_target REAL,  -- Status: BMR (target) (kcal) - set on /targets
     updated_at TEXT
 );
 

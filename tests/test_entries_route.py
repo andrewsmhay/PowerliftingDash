@@ -18,11 +18,12 @@ def make_client(monkeypatch):
     importlib.reload(db)
 
     from app import derive, scheduler
-    from app.routes import entries, pages
+    from app.routes import entries, pages, targets
 
     importlib.reload(derive)
     importlib.reload(entries)
     importlib.reload(pages)
+    importlib.reload(targets)
 
     import app.main as main_module
 
@@ -38,14 +39,18 @@ def make_client(monkeypatch):
 def test_save_entry_computes_derived_fields(monkeypatch):
     client = make_client(monkeypatch)
 
+    targets_resp = client.post(
+        "/api/targets",
+        json={"values": {"squat_1rm_target": "170", "squat_1rm_competition": "150"}},
+    )
+    assert targets_resp.status_code == 200
+
     resp = client.post(
         "/api/entries",
         json={
             "entry_date": "05/08/2026",
             "values": {
                 "squat_1rm_current": "161",
-                "squat_1rm_target": "170",
-                "squat_1rm_competition": "150",
                 "body_weight_mass": "88",
             },
         },
@@ -67,6 +72,24 @@ def test_save_entry_rejects_unknown_field(monkeypatch):
         json={"entry_date": "05/08/2026", "values": {"squat_1rm_remaining": "9"}},
     )
     assert resp.status_code == 400
+
+
+def test_save_entry_rejects_target_and_competition_fields(monkeypatch):
+    """Target/competition are configured on /targets, not per date - the
+    entry endpoint must reject them with a message pointing there, rather
+    than silently accepting or lumping them in with a generic unknown-field
+    error."""
+    client = make_client(monkeypatch)
+
+    resp = client.post(
+        "/api/entries",
+        json={
+            "entry_date": "05/08/2026",
+            "values": {"squat_1rm_current": "161", "squat_1rm_target": "170"},
+        },
+    )
+    assert resp.status_code == 400
+    assert "/targets" in resp.json()["detail"]
 
 
 def test_save_entry_rejects_bad_date(monkeypatch):

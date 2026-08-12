@@ -21,10 +21,15 @@ run full screen on a monitor (kiosk-style).
   a UUID, generated once per date and kept stable across re-saves/re-syncs).
   Each row is tagged with a `source` column (`manual` or `sheet_sync`) so
   you can always tell where a given date's numbers came from.
+- **Targets and competition numbers (hardcoded goals):** your 1RM targets,
+  1RM competition numbers, and body-composition/BMI/BMR targets are set
+  once on the **Targets** page (`/targets`), not typed in with every dated
+  entry. They live as scalar columns on a single `app_settings` row rather
+  than on `entries` - see "Targets vs daily entries" below.
 
 ## Screenshots
 
-All three below are running against eight weeks of made-up demo data (a
+All four below are running against eight weeks of made-up demo data (a
 fictional powerlifter cutting body fat while building toward a target
 total), seeded straight into a scratch database purely to illustrate the
 layout - none of it is real training or health data.
@@ -37,6 +42,11 @@ layout - none of it is real training or health data.
 
 ![New entry form](docs/screenshots/entry_form.png)
 
+**Targets** - 1RM targets, competition numbers and body-composition goals,
+set once rather than typed in with every dated entry:
+
+![Targets page](docs/screenshots/targets.png)
+
 **Settings** - optional Google Sheet sync configuration:
 
 ![Settings page](docs/screenshots/settings.png)
@@ -46,11 +56,27 @@ layout - none of it is real training or health data.
 The SQLite schema is generated from the **v1** tab of the source Google
 Sheet's data dictionary (Area / Item / Description / Measurement-Type /
 "Configured in Settings as Manual Input?" / "Read from New Date Entry?").
-Every Item on that tab becomes one column on the `entries` table, so a
-single dated row is a complete snapshot of your goals, targets, and status
-metrics for that day (squat/bench/deadlift 1RM current/target/competition/
-remaining/delta, total weight lifted, body weight/muscle/fat mass, body
-fat %, BMI, BMR, all with target/remaining/"to date" variants).
+Every Item on that tab becomes exactly one column, split across two
+tables by what kind of value it is:
+
+- **`entries`** (32 columns) - anything that changes with a dated
+  reading: the 9 daily manual inputs (squat/bench/deadlift 1RM current,
+  body weight/muscle/fat mass, body fat %, BMI, BMR) plus the 23 columns
+  `derive.py` computes from them (remaining, competition deltas, totals,
+  "to date" figures).
+- **`app_settings`** (12 columns) - the target and competition items,
+  which describe a goal rather than a dated reading: squat/bench/deadlift
+  1RM target and competition, and the target for body weight/muscle/fat
+  mass, body fat %, BMI and BMR. These are set once on `/targets`, stored
+  as a single scalar row, and read by `derive.py` as a snapshot applied
+  uniformly across every historical entry - see "Targets vs daily
+  entries" below.
+
+`schema/generate_schema.py::is_config_item()` does this split by checking
+for a strict `(target)` or `(competition)` suffix on the Item name. It
+deliberately excludes `(competition delta)` and "Total Weight Lifted (in
+competition)", which are derived status figures, not goals, and stay on
+`entries`.
 
 - `schema/v1_items.csv` - a checked-in copy of the v1 tab, kept as the
   source of truth for column generation.
@@ -80,6 +106,29 @@ fat %, BMI, BMR, all with target/remaining/"to date" variants).
    figures) are recalculated for every stored date - not just the one you
    just saved - so backfilling an earlier date always keeps history
    consistent.
+
+Target and competition fields do not appear on this form, and posting
+one to `/api/entries` is rejected with a `400` pointing you to `/targets`
+instead - see the next section.
+
+## Setting your targets and competition numbers
+
+Your 1RM targets, 1RM competition numbers, and body-composition/BMI/BMR
+targets are goals, not daily readings, so they live on their own page
+rather than on `/entries/new`:
+
+1. Open `/targets` (there's a **Targets** link on the dashboard's top bar
+   and on `/settings`).
+2. Fields are grouped by area and pre-filled with whatever you last
+   saved. Leave a field blank to leave it unset.
+3. Hit **Save targets**. This writes to a single `app_settings` row (via
+   `db.update_config()`), then calls `derive.recompute_all()`, so every
+   stored entry's remaining/delta figures update immediately to reflect
+   the new goal - not just entries you save from now on.
+
+Because they're config rather than per-date data, target and competition
+values are intentionally excluded from `/entries/new`: posting one there
+returns a `400` telling you to use `/targets` instead.
 
 ## Setting up the optional Google Sheet sync
 
@@ -203,23 +252,23 @@ docker buildx build --platform linux/amd64,linux/arm64 \
 app/
   main.py            FastAPI app, startup/shutdown hooks
   config.py          Environment-driven configuration
-  db.py              SQLite access, upsert logic
+  db.py              SQLite access, upsert logic, app_settings config (get_config/update_config)
   numeric.py         Shared numeric string coercion (manual form + sheet sync)
-  derive.py          Computes all "read from new date entry" columns
+  derive.py          Computes all "read from new date entry" columns from a config snapshot
   date_utils.py      Explicit dd/mm/yyyy + Sheets-serial date parsing
   auth_provider.py   Pluggable Google credential loading
   sheets_client.py   Google Sheets API read
   sync.py            Header-to-column mapping, sheet -> SQLite sync (dormant by default)
   scheduler.py       Background thread; only calls sync.py if a Sheet ID is set
-  metrics.py         Raw entry row -> dashboard card/chart payload
-  routes/            Page routes (dashboard, entries/new, settings) and JSON API
-  templates/         Jinja2 templates
-  static/            CSS, JS, vendored Chart.js
+  metrics.py         Raw entry row + config -> dashboard card/chart payload
+  routes/            Page routes (dashboard, entries/new, targets, settings) and JSON API
+  templates/         Jinja2 templates (including targets.html)
+  static/            CSS, JS (including targets.js), vendored Chart.js
   schema.sql, schema_manifest.json   Generated - do not hand-edit
 schema/
   v1_items.csv        Source-of-truth data dictionary (v1 tab)
-  generate_schema.py   Regenerates the schema from the CSV above
-tests/                 pytest unit tests (date parsing, sync mapping, DB, derive, entries route)
+  generate_schema.py   Regenerates the schema from the CSV above; splits entries vs app_settings
+tests/                 pytest unit tests (date parsing, sync mapping, DB, derive, entries route, targets route)
 Dockerfile             Multi-stage, slim Alpine, multi-arch
 docker-compose.yml
 ```
@@ -279,3 +328,19 @@ python3 -m pytest tests/ -v
   UPDATE app_settings SET entries_tab_name = '' WHERE entries_tab_name = 'v1';
   ```
   This has no effect on manual entries, which don't touch this setting.
+- **Upgrading an existing database for the `/targets` split:** older
+  databases stored target/competition values as columns on `entries`.
+  `db.init_db()` now runs two migration steps automatically on startup,
+  so nothing manual is required on your Pi:
+  1. `_ensure_config_columns()` - idempotent `ALTER TABLE app_settings ADD
+     COLUMN` for each of the 12 target/competition columns, safe to run
+     on every startup (it checks the existing column list first).
+  2. `_backfill_config_from_latest_entry()` - a one-time seed: if
+     `app_settings`'s target/competition columns are still `NULL` and
+     your old `entries` table still has legacy target/competition
+     columns, it copies the values from your most recent entry into
+     `app_settings` so your existing goals aren't lost. It's a no-op on
+     fresh installs and on any database that's already migrated.
+
+  After upgrading, open `/targets` once to confirm your goals carried
+  over correctly, and adjust anything that didn't.

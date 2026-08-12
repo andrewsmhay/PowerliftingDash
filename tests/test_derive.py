@@ -24,17 +24,19 @@ def test_compute_row_derived_remaining_and_competition_delta():
 
     row = {
         "squat_1rm_current": 161.0,
-        "squat_1rm_target": 170.0,
-        "squat_1rm_competition": 150.0,
         "bench_1rm_current": 100.0,
-        "bench_1rm_target": 110.0,
-        "bench_1rm_competition": 95.0,
         "deadlift_1rm_current": 200.0,
-        "deadlift_1rm_target": 210.0,
-        "deadlift_1rm_competition": 190.0,
         "body_weight_mass": 88.0,
     }
-    derived = compute_row_derived(row, baselines={"body_weight_mass": 90.0})
+    config = {
+        "squat_1rm_target": 170.0,
+        "squat_1rm_competition": 150.0,
+        "bench_1rm_target": 110.0,
+        "bench_1rm_competition": 95.0,
+        "deadlift_1rm_target": 210.0,
+        "deadlift_1rm_competition": 190.0,
+    }
+    derived = compute_row_derived(row, baselines={"body_weight_mass": 90.0}, config=config)
 
     assert derived["squat_1rm_remaining"] == 9.0
     assert derived["squat_1rm_competition_delta"] == 11.0
@@ -49,8 +51,8 @@ def test_compute_row_derived_remaining_and_competition_delta():
 def test_compute_row_derived_missing_values_yield_none_not_errors():
     from app.derive import compute_row_derived
 
-    row = {"squat_1rm_current": 161.0}  # target/competition missing
-    derived = compute_row_derived(row, baselines={})
+    row = {"squat_1rm_current": 161.0}  # target/competition missing from config
+    derived = compute_row_derived(row, baselines={}, config={})
 
     assert derived["squat_1rm_remaining"] is None
     assert derived["squat_1rm_competition_delta"] is None
@@ -62,11 +64,15 @@ def test_status_remaining_and_to_date_are_signed():
 
     row = {
         "body_weight_mass": 87.0,
-        "body_weight_mass_target": 84.0,
         "bmi": 26.5,
+    }
+    config = {
+        "body_weight_mass_target": 84.0,
         "bmi_target": 24.0,
     }
-    derived = compute_row_derived(row, baselines={"body_weight_mass": 90.0, "bmi": 28.0})
+    derived = compute_row_derived(
+        row, baselines={"body_weight_mass": 90.0, "bmi": 28.0}, config=config
+    )
 
     assert derived["body_weight_mass_remaining"] == -3.0  # target - current
     assert derived["body_weight_mass_to_date"] == -3.0  # current - baseline
@@ -114,3 +120,28 @@ def test_recompute_all_on_empty_db_is_a_noop(monkeypatch):
     from app import derive
 
     assert derive.recompute_all() == 0
+
+
+def test_recompute_all_sources_target_and_competition_from_config(monkeypatch):
+    """Targets/competition are hardcoded on /targets (app_settings), not on
+    entries - recompute_all() must read the current config snapshot and
+    apply it uniformly, including to rows saved before the config existed.
+    """
+    db = make_temp_db(monkeypatch)
+    from app import derive
+
+    db.upsert_entry("2026-08-01", None, {"squat_1rm_current": 150.0}, source="manual")
+    derive.recompute_all()
+    assert db.get_entry_by_date("2026-08-01")["squat_1rm_remaining"] is None
+
+    db.update_config(squat_1rm_target=170.0, squat_1rm_competition=140.0)
+    derive.recompute_all()
+
+    entry = db.get_entry_by_date("2026-08-01")
+    assert entry["squat_1rm_remaining"] == 20.0
+    assert entry["squat_1rm_competition_delta"] == 10.0
+
+    # Changing the target again re-applies to the same historical row.
+    db.update_config(squat_1rm_target=160.0)
+    derive.recompute_all()
+    assert db.get_entry_by_date("2026-08-01")["squat_1rm_remaining"] == 10.0
