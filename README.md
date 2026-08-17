@@ -22,6 +22,12 @@ run full screen on a monitor (kiosk-style).
   once on the **Targets** page (`/targets`), not typed in with every dated
   entry. They live as scalar columns on a single `app_settings` row rather
   than on `entries` - see "Targets vs daily entries" below.
+- **Personal profile and OpenPowerlifting personal bests:** your name, date
+  of birth, and openpowerlifting.org username are set once on the
+  **Settings** page (`/settings`). The username, if set, is used to fetch
+  your personal-best squat/bench/deadlift/total directly from your public
+  openpowerlifting.org profile - see "OpenPowerlifting personal bests"
+  below.
 
 ## Screenshots
 
@@ -52,7 +58,8 @@ set once rather than typed in with every dated entry:
 
 ![Targets page](docs/screenshots/targets.png)
 
-**Settings** - timezone, entry count, and the danger zone:
+**Settings** - your name, date of birth, OpenPowerlifting username and
+personal bests, timezone, entry count, and the danger zone:
 
 ![Settings page](docs/screenshots/settings.png)
 
@@ -70,13 +77,25 @@ exactly one column, split across two tables by what kind of value it is:
   body weight/muscle/fat mass, body fat %, BMI, BMR) plus the 23 columns
   `derive.py` computes from them (remaining, competition deltas, totals,
   "to date" figures).
-- **`app_settings`** (12 columns) - the target and competition items,
+- **`app_settings`** (12 columns from the v1 sheet, plus 9 hardcoded
+  columns added later - see below) - the target and competition items,
   which describe a goal rather than a dated reading: squat/bench/deadlift
   1RM target and competition, and the target for body weight/muscle/fat
   mass, body fat %, BMI and BMR. These are set once on `/targets`, stored
   as a single scalar row, and read by `derive.py` as a snapshot applied
   uniformly across every historical entry - see "Targets vs daily
   entries" below.
+
+A further **9 columns** on `app_settings` - `display_name`,
+`date_of_birth`, `openpowerlifting_username`, `opl_best_squat`,
+`opl_best_bench`, `opl_best_deadlift`, `opl_best_total`, `opl_fetched_at`,
+`opl_fetch_error` - are not driven by the v1 sheet at all. They're
+hardcoded in `schema/generate_schema.py` alongside `timezone`, the same
+way that column was added: a personal-profile and integration field that
+has no equivalent "Area / Item" row in the original data dictionary.
+`db._ensure_settings_columns()` adds them to any pre-existing database on
+startup, the same idempotent way `_ensure_config_columns()` already
+handled the `/targets` split.
 
 `schema/generate_schema.py::is_config_item()` does this split by checking
 for a strict `(target)` or `(competition)` suffix on the Item name. It
@@ -151,6 +170,48 @@ Because they're config rather than per-date data, target and competition
 values are intentionally excluded from `/entries/new`: posting one there
 returns a `400` telling you to use `/targets` instead.
 
+## OpenPowerlifting personal bests
+
+If you compete, PowerliftingDash can show your all-time personal-best
+squat/bench/deadlift/total next to each lift card, sourced directly from
+your public profile on [openpowerlifting.org](https://www.openpowerlifting.org/):
+
+1. Open `/settings` and enter your openpowerlifting.org username (the part
+   of your profile URL after `/u/`, e.g. `andrewhay` for
+   `openpowerlifting.org/u/andrewhay`).
+2. Hit **Save settings**. If the username is new or has changed,
+   PowerliftingDash fetches your best-lifts table there and then, and
+   stores the Raw-equipment squat/bench/deadlift/total on `app_settings`
+   (`app/openpowerlifting.py::fetch_personal_bests()`). Saving again with
+   the same username does not re-fetch.
+3. Use the **Refresh personal bests** button on `/settings`
+   (`POST /api/openpowerlifting/refresh`) any time you want to pull an
+   updated result, e.g. after a new competition is added to the database.
+
+Notes and failure modes:
+
+- This is the **only** place PowerliftingDash makes an outbound network
+  call. It's an explicit, on-demand `GET` against a public profile page,
+  triggered only by a Settings save or a Refresh click - there is no
+  background job, no scheduled polling, and no other external data source
+  anywhere in the app.
+- openpowerlifting.org has no public JSON API for a single lifter, so
+  `app/openpowerlifting.py` parses the small best-lifts table at the top
+  of the profile page with the standard library's `html.parser` (no
+  third-party HTML/XML packages are used).
+- If a username matches more than one lifter, openpowerlifting.org serves
+  a disambiguation page instead of a profile; PowerliftingDash detects
+  this and surfaces a message suggesting the numbered usernames shown on
+  that page (e.g. `joshuabaker1`, `joshuabaker2`).
+- If the username is wrong, unreachable, or the page can't be parsed, the
+  settings save still succeeds - your other fields are stored - but the
+  response includes an `openpowerlifting_warning`, which `settings.js`
+  surfaces as an inline warning, and the failure reason is stored in
+  `app_settings.opl_fetch_error` for later inspection.
+- Personal bests are always in kilograms, matching every other weight
+  figure in the app, and prefer the "Raw" equipment row when a lifter has
+  results in more than one equipment category.
+
 ## Running it
 
 ```bash
@@ -216,9 +277,12 @@ python3 -m pytest tests/ -v
 
 ## Notes and assumptions
 
-- **Manual entry is the only workflow.** The `/entries/new` web form is
-  the sole place numbers get logged; there is no external data source or
-  background job of any kind.
+- **Manual entry is the only workflow for daily readings.** The
+  `/entries/new` web form is the sole place dated numbers get logged; there
+  is no background job or scheduled sync of any kind. The one exception is
+  the OpenPowerlifting personal-best lookup described above, which is an
+  explicit, on-demand fetch triggered only by a Settings save or Refresh
+  click - see "OpenPowerlifting personal bests".
 - The v1 tab's "Configured in Settings as Manual Input?" column drives
   which columns appear on the `/entries/new` form (`configured_in_settings`
   in `schema_manifest.json`). The "Read from New Date Entry?" column
@@ -257,3 +321,13 @@ python3 -m pytest tests/ -v
 
   After upgrading, open `/targets` once to confirm your goals carried
   over correctly, and adjust anything that didn't.
+- **Upgrading an existing database for the personal profile and
+  OpenPowerlifting fields:** `db.init_db()` also runs
+  `_ensure_settings_columns()` on every startup, an idempotent `ALTER
+  TABLE app_settings ADD COLUMN` for the 9 columns listed in "How the
+  schema was built" above (`display_name`, `date_of_birth`,
+  `openpowerlifting_username`, and the six `opl_*` fields). Like
+  `_ensure_config_columns()`, it checks the existing column list first, so
+  it's a no-op on any database that already has them. There is no
+  backfill step for these columns - they simply start `NULL` until you
+  fill them in on `/settings`.

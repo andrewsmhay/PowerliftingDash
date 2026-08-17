@@ -10,7 +10,7 @@ from .routes import api, entries, pages, targets
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
-app = FastAPI(title="PowerliftingDash")
+app = FastAPI(title="Powerlifting Dashboard")
 app.state.templates = Jinja2Templates(directory=str(config.APP_DIR / "templates"))
 app.mount("/static", StaticFiles(directory=str(config.APP_DIR / "static")), name="static")
 

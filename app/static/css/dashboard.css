@@ -125,9 +125,16 @@ body {
   height: 8px;
   background: var(--surface-alt);
   border-radius: 999px;
-  margin: 14px 0 10px;
+  margin: 14px 0 6px;
   overflow: hidden;
   border: 1px solid var(--border);
+}
+
+.progress-pct {
+  display: block;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
 }
 
 .progress-fill {
@@ -161,6 +168,15 @@ body {
 }
 .delta-pill.positive { color: var(--success); }
 .delta-pill.negative { color: var(--warning); }
+
+.pb-row {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.pb-row strong { color: var(--text); font-weight: 600; }
 
 .charts-grid {
   display: grid;

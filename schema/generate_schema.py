@@ -131,6 +131,15 @@ def build_sql(columns):
     lines.append("CREATE TABLE IF NOT EXISTS app_settings (")
     lines.append("    id INTEGER PRIMARY KEY CHECK (id = 1),  -- single row")
     lines.append("    timezone TEXT NOT NULL DEFAULT 'America/Toronto',")
+    lines.append("    display_name TEXT,               -- optional, shown in the dashboard title")
+    lines.append("    date_of_birth TEXT,               -- ISO 8601 (YYYY-MM-DD), entered as dd/mm/yyyy")
+    lines.append("    openpowerlifting_username TEXT,   -- openpowerlifting.org/u/<username>")
+    lines.append("    opl_best_squat REAL,               -- cached personal best, kg")
+    lines.append("    opl_best_bench REAL,               -- cached personal best, kg")
+    lines.append("    opl_best_deadlift REAL,            -- cached personal best, kg")
+    lines.append("    opl_best_total REAL,               -- cached personal best, kg")
+    lines.append("    opl_fetched_at TEXT,               -- ISO 8601 UTC timestamp of last fetch attempt")
+    lines.append("    opl_fetch_error TEXT,              -- error message from the last failed fetch, if any")
     for col in config_cols:
         lines.append(
             f"    {col['column']} {col['sql_type']},  "

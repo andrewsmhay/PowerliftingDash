@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}PowerliftingDash{% endblock %}
+{% block title %}{{ page_title }}{% endblock %}
 {% block content %}
 <div class="top-bar">
     <div>
-        <h1>PowerliftingDash</h1>
+        <h1 id="dashboard-title">{{ page_title }}</h1>
         <div class="subtitle" id="latest-entry-date">
             {% if data.latest_entry_date %}Latest entry: {{ data.latest_entry_date }}{% else %}No entries yet{% endif %}
         </div>

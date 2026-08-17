@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Settings - PowerliftingDash{% endblock %}
+{% block title %}Settings - Powerlifting Dashboard{% endblock %}
 {% block content %}
 <div class="settings-wrap">
     <a class="back-link" href="/">&larr; Back to dashboard</a>
@@ -17,9 +17,53 @@
             <div class="hint">Used to default the date on the New entry form to today.</div>
         </div>
 
+        <div class="field-group">
+            <label for="display_name">Name</label>
+            <input type="text" id="display_name" name="display_name" value="{{ settings.display_name or '' }}" placeholder="e.g. Andrew">
+            <div class="hint">Optional. Shown in the dashboard title, e.g. "Andrew's Powerlifting Dashboard".</div>
+        </div>
+
+        <div class="field-group">
+            <label for="date_of_birth">Date of birth</label>
+            <input type="text" id="date_of_birth" name="date_of_birth" value="{{ date_of_birth_display or '' }}"
+                   pattern="\d{1,2}/\d{1,2}/\d{4}" placeholder="dd/mm/yyyy">
+            <div class="hint">Optional. Used for future age calculations.</div>
+        </div>
+
+        <div class="field-group">
+            <label for="openpowerlifting_username">OpenPowerlifting username</label>
+            <input type="text" id="openpowerlifting_username" name="openpowerlifting_username"
+                   value="{{ settings.openpowerlifting_username or '' }}" placeholder="e.g. kimberlywalford">
+            <div class="hint">
+                From your profile URL at openpowerlifting.org/u/&lt;username&gt;. Used to show your personal
+                bests on the Lifts cards. Fetched once when you save a new username here, never in the
+                background - use "Refresh personal bests" below to pull the latest result on demand.
+            </div>
+        </div>
+
         <button type="submit" class="btn">Save settings</button>
         <div id="save-status"></div>
     </form>
+
+    <div class="section-label" style="margin-top:34px;">OpenPowerlifting personal bests</div>
+    <div class="info-box">
+        {% if settings.opl_best_squat or settings.opl_best_bench or settings.opl_best_deadlift or settings.opl_best_total %}
+            Squat <strong>{{ settings.opl_best_squat or '-' }} kg</strong>,
+            Bench <strong>{{ settings.opl_best_bench or '-' }} kg</strong>,
+            Deadlift <strong>{{ settings.opl_best_deadlift or '-' }} kg</strong>,
+            Total <strong>{{ settings.opl_best_total or '-' }} kg</strong>.<br>
+        {% else %}
+            No personal bests cached yet.<br>
+        {% endif %}
+        {% if settings.opl_fetch_error %}
+            <span style="color:var(--error);">Last fetch failed: {{ settings.opl_fetch_error }}</span>
+        {% elif settings.opl_fetched_at %}
+            Last fetched {{ settings.opl_fetched_at }}.
+        {% endif %}
+        <div style="margin-top:10px;">
+            <button type="button" class="btn secondary" id="refresh-opl-btn">Refresh personal bests</button>
+        </div>
+    </div>
 
     <div class="section-label" style="margin-top:34px;">Data</div>
     <div class="info-box">

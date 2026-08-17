@@ -68,3 +68,50 @@ def test_progress_pct_none_when_missing_current_or_target():
     cards = build_lift_cards(entry=None, config=config)  # current missing
     squat = next(c for c in cards if c["label"] == "Squat")
     assert squat["progress_pct"] is None
+
+
+def test_lift_card_attainment_percentages_are_unclamped():
+    """Unlike progress_pct (clamped 0-100 for the bar), the attainment
+    percentages shown as text may exceed 100% - overachievement should be
+    visible, not hidden.
+    """
+    entry = {"squat_1rm_current": 171.0}
+    config = {"squat_1rm_target": 170.0, "squat_1rm_competition": 160.0}
+    cards = build_lift_cards(entry, config)
+    squat = next(c for c in cards if c["label"] == "Squat")
+    assert squat["target_attainment_pct"] == 100.6
+    assert squat["competition_attainment_pct"] == 106.9
+
+
+def test_lift_card_attainment_percentages_none_when_inputs_missing():
+    cards = build_lift_cards(entry=None, config={})
+    squat = next(c for c in cards if c["label"] == "Squat")
+    assert squat["target_attainment_pct"] is None
+    assert squat["competition_attainment_pct"] is None
+
+
+def test_lift_card_personal_best_from_settings():
+    entry = {"squat_1rm_current": 150.0}
+    settings = {"opl_best_squat": 172.5, "opl_best_bench": None}
+    cards = build_lift_cards(entry, config={}, settings=settings)
+    squat = next(c for c in cards if c["label"] == "Squat")
+    bench = next(c for c in cards if c["label"] == "Bench")
+    assert squat["personal_best"] == 172.5
+    assert bench["personal_best"] is None
+
+
+def test_total_card_has_target_attainment_but_not_competition_attainment():
+    """The Total widget excludes the competition-attainment percentage per
+    the product requirement - only per-lift cards compare against the last
+    competition result.
+    """
+    entry = {
+        "total_weight_lifted_current": 441.0,
+        "total_weight_lifted_target": 480.0,
+        "total_weight_lifted_in_competition": 400.0,
+        "total_weight_lifted_remaining": 39.0,
+    }
+    total = build_total_card(entry, settings={"opl_best_total": 500.0})
+    assert total["target_attainment_pct"] == 91.9
+    assert "competition_attainment_pct" not in total
+    assert total["personal_best"] == 500.0

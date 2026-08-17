@@ -17,21 +17,36 @@
 
   function liftCardHtml(card) {
     const pct = card.progress_pct === null || card.progress_pct === undefined ? 0 : card.progress_pct;
+    const targetPct = card.target_attainment_pct;
+    const pctLabelHtml = targetPct === null || targetPct === undefined
+      ? ""
+      : '<span class="progress-pct">' + fmt(targetPct) + "% of target</span>";
+
     const delta = card.competition_delta;
+    const compPct = card.competition_attainment_pct;
     let deltaHtml = "";
     if (delta !== null && delta !== undefined) {
       const cls = delta >= 0 ? "positive" : "negative";
       const sign = delta >= 0 ? "+" : "";
-      deltaHtml = '<span class="delta-pill ' + cls + '">' + sign + fmt(delta) + " kg vs competition</span>";
+      const compPctText = compPct === null || compPct === undefined ? "" : " (" + fmt(compPct) + "%)";
+      deltaHtml = '<span class="delta-pill ' + cls + '">' + sign + fmt(delta) + " kg" + compPctText + " vs competition</span>";
     }
+
+    const pb = card.personal_best;
+    const pbHtml = pb === null || pb === undefined
+      ? ""
+      : '<div class="pb-row">PB (OpenPowerlifting) <strong>' + fmt(pb) + " " + card.unit + "</strong></div>";
+
     return (
       '<div class="card">' +
       '<div class="card-label">' + card.label + "</div>" +
       '<div class="card-value">' + valueHtml(card.current, card.unit) + "</div>" +
       '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%"></div></div>' +
+      pctLabelHtml +
       '<div class="card-meta"><span>Target <strong>' + (fmt(card.target) ?? "--") + " " + card.unit + '</strong></span>' +
       '<span>Remaining <strong>' + (fmt(card.remaining) ?? "--") + " " + card.unit + "</strong></span></div>" +
       deltaHtml +
+      pbHtml +
       "</div>"
     );
   }
@@ -137,9 +152,12 @@
   }
 
   function render(data) {
+    const titleEl = document.getElementById("dashboard-title");
+    if (titleEl && data.dashboard_title) titleEl.textContent = data.dashboard_title;
+
     const liftCardsEl = document.getElementById("lift-cards");
     liftCardsEl.innerHTML = data.lift_cards.map(liftCardHtml).join("") + liftCardHtml(
-      Object.assign({}, data.total_card, { competition_delta: null })
+      Object.assign({}, data.total_card, { competition_delta: null, competition_attainment_pct: null })
     );
 
     const bodyCardsEl = document.getElementById("body-cards");

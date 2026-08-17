@@ -10,6 +10,8 @@ instead - the same config snapshot applies regardless of which entry is
 being shown.
 """
 
+from .formatting import dashboard_title
+
 LIFTS = [
     {"key": "squat", "label": "Squat"},
     {"key": "bench", "label": "Bench"},
@@ -26,6 +28,19 @@ BODY_METRICS = [
 
 def _safe(value):
     return value if isinstance(value, (int, float)) else None
+
+
+def _pct(current, base):
+    """Unclamped percentage of `current` against `base`, one decimal place.
+
+    Distinct from `_progress_pct`, which is clamped 0-100 and drives the
+    progress bar's width only. Attainment percentages shown as text (e.g.
+    "106.7% of last competition") are allowed to run past 100% - clamping
+    them would hide genuine overachievement.
+    """
+    if current is None or base is None or base == 0:
+        return None
+    return round(current / base * 100, 1)
 
 
 def _progress_pct(current, target):
@@ -46,8 +61,11 @@ def _progress_pct(current, target):
     return max(0, min(100, round(pct, 1)))
 
 
-def build_lift_cards(entry: dict | None, config: dict | None = None) -> list[dict]:
+def build_lift_cards(
+    entry: dict | None, config: dict | None = None, settings: dict | None = None
+) -> list[dict]:
     config = config or {}
+    settings = settings or {}
     cards = []
     for lift in LIFTS:
         key = lift["key"]
@@ -66,13 +84,17 @@ def build_lift_cards(entry: dict | None, config: dict | None = None) -> list[dic
                 "remaining": remaining,
                 "competition_delta": delta,
                 "progress_pct": _progress_pct(current, target),
+                "target_attainment_pct": _pct(current, target),
+                "competition_attainment_pct": _pct(current, competition),
+                "personal_best": _safe(settings.get(f"opl_best_{key}")),
             }
         )
     return cards
 
 
-def build_total_card(entry: dict | None) -> dict:
+def build_total_card(entry: dict | None, settings: dict | None = None) -> dict:
     entry = entry or {}
+    settings = settings or {}
     current = _safe(entry.get("total_weight_lifted_current"))
     target = _safe(entry.get("total_weight_lifted_target"))
     competition = _safe(entry.get("total_weight_lifted_in_competition"))
@@ -85,6 +107,8 @@ def build_total_card(entry: dict | None) -> dict:
         "competition": competition,
         "remaining": remaining,
         "progress_pct": _progress_pct(current, target),
+        "target_attainment_pct": _pct(current, target),
+        "personal_best": _safe(settings.get("opl_best_total")),
     }
 
 
@@ -134,13 +158,19 @@ def build_index_cards(entry: dict | None, config: dict | None = None) -> list[di
 
 
 def build_dashboard_payload(
-    latest_entry: dict | None, history: list[dict], config: dict | None = None
+    latest_entry: dict | None,
+    history: list[dict],
+    config: dict | None = None,
+    settings: dict | None = None,
 ) -> dict:
     config = config or {}
+    settings = settings or {}
     return {
         "latest_entry_date": (latest_entry or {}).get("entry_date"),
-        "lift_cards": build_lift_cards(latest_entry, config),
-        "total_card": build_total_card(latest_entry),
+        "lifter_name": settings.get("display_name"),
+        "dashboard_title": dashboard_title(settings.get("display_name")),
+        "lift_cards": build_lift_cards(latest_entry, config, settings),
+        "total_card": build_total_card(latest_entry, settings),
         "weight_change_since_comp": _safe((latest_entry or {}).get("weight_change_since_comp")),
         "body_cards": build_body_cards(latest_entry, config),
         "index_cards": build_index_cards(latest_entry, config),

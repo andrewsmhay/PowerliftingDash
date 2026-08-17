@@ -115,3 +115,51 @@ def test_init_db_backfill_does_not_overwrite_existing_config(monkeypatch):
 
     config_values = db.get_config()
     assert config_values["squat_1rm_target"] == 999.0  # not clobbered by legacy 170.0
+
+
+def test_ensure_settings_columns_adds_personal_and_opl_columns(monkeypatch):
+    """A pre-existing app_settings table (created before the personal-profile
+    and OpenPowerlifting features shipped) must gain the 9 new columns on
+    the next startup, without touching any existing data.
+    """
+    db = _make_legacy_db(monkeypatch)
+
+    with db.connection() as conn:
+        before = {row["name"] for row in conn.execute("PRAGMA table_info(app_settings)").fetchall()}
+    assert "display_name" not in before
+    assert "openpowerlifting_username" not in before
+
+    db.init_db()
+
+    with db.connection() as conn:
+        after = {row["name"] for row in conn.execute("PRAGMA table_info(app_settings)").fetchall()}
+    expected_new_columns = {
+        "display_name",
+        "date_of_birth",
+        "openpowerlifting_username",
+        "opl_best_squat",
+        "opl_best_bench",
+        "opl_best_deadlift",
+        "opl_best_total",
+        "opl_fetched_at",
+        "opl_fetch_error",
+    }
+    assert expected_new_columns.issubset(after)
+
+    # Idempotent: running it again must not error or duplicate columns.
+    db._ensure_settings_columns()
+    with db.connection() as conn:
+        again = {row["name"] for row in conn.execute("PRAGMA table_info(app_settings)").fetchall()}
+    assert again == after
+
+
+def test_ensure_settings_columns_preserves_existing_values(monkeypatch):
+    db = _make_legacy_db(monkeypatch)
+    db.init_db()
+
+    db.update_settings(display_name="Andrew", openpowerlifting_username="andrewhay")
+    db._ensure_settings_columns()  # simulate a second startup
+
+    settings = db.get_settings()
+    assert settings["display_name"] == "Andrew"
+    assert settings["openpowerlifting_username"] == "andrewhay"

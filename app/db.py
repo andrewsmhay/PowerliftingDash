@@ -51,6 +51,7 @@ def init_db() -> None:
     with connection() as conn:
         conn.executescript(sql)
     _ensure_config_columns()
+    _ensure_settings_columns()
     _backfill_config_from_latest_entry()
 
 
@@ -84,6 +85,32 @@ def _ensure_config_columns() -> None:
         for col in config_columns():
             if col["column"] not in existing:
                 conn.execute(f"ALTER TABLE app_settings ADD COLUMN {col['column']} {col['sql_type']}")
+
+
+def _ensure_settings_columns() -> None:
+    """Adds the personal-profile and OpenPowerlifting-cache columns missing
+    from an existing `app_settings` table (idempotent - safe to run on every
+    startup). These are hardcoded app metadata, not manifest-driven, same as
+    `timezone` itself.
+    """
+    settings_columns = [
+        ("display_name", "TEXT"),
+        ("date_of_birth", "TEXT"),
+        ("openpowerlifting_username", "TEXT"),
+        ("opl_best_squat", "REAL"),
+        ("opl_best_bench", "REAL"),
+        ("opl_best_deadlift", "REAL"),
+        ("opl_best_total", "REAL"),
+        ("opl_fetched_at", "TEXT"),
+        ("opl_fetch_error", "TEXT"),
+    ]
+    with connection() as conn:
+        existing = {
+            row["name"] for row in conn.execute("PRAGMA table_info(app_settings)").fetchall()
+        }
+        for column, sql_type in settings_columns:
+            if column not in existing:
+                conn.execute(f"ALTER TABLE app_settings ADD COLUMN {column} {sql_type}")
 
 
 def _backfill_config_from_latest_entry() -> None:

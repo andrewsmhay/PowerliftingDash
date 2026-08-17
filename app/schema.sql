@@ -49,6 +49,15 @@ CREATE INDEX IF NOT EXISTS idx_entries_entry_date ON entries(entry_date);
 CREATE TABLE IF NOT EXISTS app_settings (
     id INTEGER PRIMARY KEY CHECK (id = 1),  -- single row
     timezone TEXT NOT NULL DEFAULT 'America/Toronto',
+    display_name TEXT,               -- optional, shown in the dashboard title
+    date_of_birth TEXT,               -- ISO 8601 (YYYY-MM-DD), entered as dd/mm/yyyy
+    openpowerlifting_username TEXT,   -- openpowerlifting.org/u/<username>
+    opl_best_squat REAL,               -- cached personal best, kg
+    opl_best_bench REAL,               -- cached personal best, kg
+    opl_best_deadlift REAL,            -- cached personal best, kg
+    opl_best_total REAL,               -- cached personal best, kg
+    opl_fetched_at TEXT,               -- ISO 8601 UTC timestamp of last fetch attempt
+    opl_fetch_error TEXT,              -- error message from the last failed fetch, if any
     squat_1rm_target REAL,  -- Goals: Squat 1RM (target) (kg) - set on /targets
     squat_1rm_competition REAL,  -- Goals: Squat 1RM (competition) (kg) - set on /targets
     bench_1rm_target REAL,  -- Goals: Bench 1RM (target) (kg) - set on /targets
