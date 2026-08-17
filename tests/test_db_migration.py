@@ -51,15 +51,7 @@ def _make_legacy_db(monkeypatch):
             );
             CREATE TABLE app_settings (
                 id INTEGER PRIMARY KEY CHECK (id = 1),
-                google_sheet_id TEXT,
-                entries_tab_name TEXT NOT NULL DEFAULT '',
-                date_column_name TEXT NOT NULL DEFAULT 'Date',
-                sync_interval_minutes INTEGER NOT NULL DEFAULT 10,
                 timezone TEXT NOT NULL DEFAULT 'America/Toronto',
-                service_account_json TEXT,
-                last_sync_at TEXT,
-                last_sync_status TEXT,
-                last_sync_message TEXT,
                 updated_at TEXT
             );
             INSERT INTO app_settings (id, updated_at) VALUES (1, '2026-01-01T00:00:00+00:00');

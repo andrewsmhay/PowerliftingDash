@@ -5,78 +5,36 @@
     <a class="back-link" href="/">&larr; Back to dashboard</a>
     <h1>Settings</h1>
     <p class="lead">
-        Data entry happens on the <a href="/entries/new">New entry</a> page, and 1RM/body
-        composition goals are hardcoded on the <a href="/targets">Targets</a> page. The Google
-        Sheet settings below are optional, only fill them in if you also want to pull dated rows
-        in from a spreadsheet; leave the Sheet ID blank to leave that path switched off.
+        Data entry happens on the <a href="/entries/new">New entry</a> page, past entries can be
+        fixed or removed on the <a href="/entries">Manage entries</a> page, and 1RM/body
+        composition goals are hardcoded on the <a href="/targets">Targets</a> page.
     </p>
-
-    <div class="info-box">
-        {% if service_account_email %}
-            Share your Google Sheet with this service account (Viewer access is enough):<br>
-            <code>{{ service_account_email }}</code>
-        {% else %}
-            No Google service account credentials are configured yet. Paste a service account JSON key below,
-            or set <code>PLD_GOOGLE_SERVICE_ACCOUNT_JSON</code> / <code>PLD_GOOGLE_SERVICE_ACCOUNT_FILE</code>
-            on the container, or mount a key file at <code>/data/service_account.json</code>.
-        {% endif %}
-    </div>
 
     <form id="settings-form">
         <div class="field-group">
-            <label for="google_sheet_id">Google Sheet ID</label>
-            <input type="text" id="google_sheet_id" name="google_sheet_id"
-                   value="{{ settings.google_sheet_id or '' }}"
-                   placeholder="1zaqLXpLV8GXWoWDJoYeDG-pAXci3wCnYdslYQ8UEQ5A">
-            <div class="hint">The long ID from the Sheet's URL, between /d/ and /edit.</div>
-        </div>
-
-        <div class="field-group">
-            <label for="entries_tab_name">Entries tab name</label>
-            <input type="text" id="entries_tab_name" name="entries_tab_name"
-                   value="{{ settings.entries_tab_name or '' }}" placeholder="e.g. Log">
-            <div class="hint">
-                The tab with your dated entry rows (one row per date, one column per metric). This is
-                a separate tab from any metric catalogue/definitions tab you may keep for reference.
-            </div>
-        </div>
-
-        <div class="field-group">
-            <label for="date_column_name">Date column header</label>
-            <input type="text" id="date_column_name" name="date_column_name"
-                   value="{{ settings.date_column_name or 'Date' }}">
-            <div class="hint">Header text of the column holding dates, entered as dd/mm/yyyy.</div>
-        </div>
-
-        <div class="field-group">
-            <label for="sync_interval_minutes">Sync interval (minutes)</label>
-            <input type="number" id="sync_interval_minutes" name="sync_interval_minutes" min="1"
-                   value="{{ settings.sync_interval_minutes or 10 }}">
-        </div>
-
-        <div class="field-group">
             <label for="timezone">Timezone</label>
             <input type="text" id="timezone" name="timezone" value="{{ settings.timezone or 'America/Toronto' }}">
-        </div>
-
-        <div class="field-group">
-            <label for="service_account_json">Service account JSON key (optional override)</label>
-            <textarea id="service_account_json" name="service_account_json"
-                      placeholder="Paste the full JSON key here, or leave blank to use an existing credential"></textarea>
-            <div class="hint">Leave blank to keep the currently configured credential unchanged.</div>
+            <div class="hint">Used to default the date on the New entry form to today.</div>
         </div>
 
         <button type="submit" class="btn">Save settings</button>
-        <button type="button" class="btn secondary" id="sync-now-btn">Sync now</button>
         <div id="save-status"></div>
     </form>
 
-    <div class="section-label" style="margin-top:34px;">Sync status</div>
+    <div class="section-label" style="margin-top:34px;">Data</div>
     <div class="info-box">
-        Entries stored: <strong>{{ entry_count }}</strong><br>
-        Last sync: {{ settings.last_sync_at or "never" }}<br>
-        {% if settings.last_sync_status %}Status: {{ settings.last_sync_status }}<br>{% endif %}
-        {% if settings.last_sync_message %}{{ settings.last_sync_message }}{% endif %}
+        Entries stored: <strong>{{ entry_count }}</strong>
+    </div>
+
+    <div class="section-label" style="margin-top:34px; color:var(--error);">Danger zone</div>
+    <div class="danger-zone">
+        Permanently deletes every entry. Targets and competition numbers are kept. This cannot be
+        undone - export or note down anything you need first.
+        <label class="checkbox-row">
+            <input type="checkbox" id="confirm-delete-all">
+            I understand this will permanently delete all {{ entry_count }} entries.
+        </label>
+        <button type="button" class="btn danger" id="delete-all-btn" disabled>Delete all entries</button>
     </div>
 </div>
 {% endblock %}

@@ -1,44 +1,63 @@
 {% extends "base.html" %}
-{% block title %}New entry - PowerliftingDash{% endblock %}
+{% block title %}{{ "Edit entry" if editing else "New entry" }} - PowerliftingDash{% endblock %}
 {% block content %}
 <div class="settings-wrap">
-    <a class="back-link" href="/">&larr; Back to dashboard</a>
-    <h1>New entry</h1>
+    <a class="back-link" href="{{ '/entries' if editing else '/' }}">&larr; Back to {{ "all entries" if editing else "dashboard" }}</a>
+    <h1>{{ "Edit entry" if editing else "New entry" }}</h1>
+    {% if editing %}
     <p class="lead">
-        Log today's numbers. Remaining, deltas, totals and "to date" figures are calculated
-        automatically from these values, your history, and your <a href="/targets">targets &amp;
-        competition</a> config, so you never need to type them in.
+        Update this date's readings below. Remaining, deltas, totals and "to date" figures are
+        recalculated automatically after you save.
     </p>
+    {% else %}
+    <p class="lead">
+        Log today's numbers. Fill in Lifts, Body Composition, or both - leave a section blank to
+        skip it for this entry, for example on a weigh-in day with no lifting. Remaining, deltas,
+        totals and "to date" figures are calculated automatically from these values, your history,
+        and your <a href="/targets">targets &amp; competition</a> config, so you never need to
+        type them in.
+    </p>
+    {% endif %}
 
-    <form id="entry-form">
+    <form id="entry-form" data-mode="{{ 'edit' if editing else 'create' }}" data-entry-id="{{ entry_id or '' }}">
         <div class="field-group">
             <label for="entry_date">Date</label>
             <input type="text" id="entry_date" name="entry_date" value="{{ today }}"
                    pattern="\d{1,2}/\d{1,2}/\d{4}" placeholder="dd/mm/yyyy" required>
-            <div class="hint">dd/mm/yyyy. Defaults to today; change it to backfill an earlier date.</div>
+            <div class="hint">
+                dd/mm/yyyy.
+                {% if editing %}Change this to move the entry to a different date.{% else %}Defaults to today; change it to backfill an earlier date.{% endif %}
+            </div>
         </div>
 
         {% for area, fields in areas.items() %}
         <div class="section-label" style="margin-top:30px;">{{ area }}</div>
         <div class="entry-field-grid">
             {% for field in fields %}
+            {% set stored = latest.get(field.column) %}
             <div class="field-group">
                 <label for="{{ field.column }}">{{ field.item }}</label>
                 <input type="number" step="any" id="{{ field.column }}" name="{{ field.column }}"
-                       value="{{ latest.get(field.column) if latest.get(field.column) is not none else '' }}"
-                       placeholder="{{ field.measurement_type }}">
+                       {% if editing %}value="{{ stored if stored is not none else '' }}"{% endif %}
+                       placeholder="{{ ('Last: ' ~ stored) if (not editing and stored is not none) else field.measurement_type }}">
             </div>
             {% endfor %}
         </div>
         {% endfor %}
 
-        <button type="submit" class="btn">Save entry</button>
+        <button type="submit" class="btn">{{ "Save changes" if editing else "Save entry" }}</button>
+        {% if editing %}
+        <button type="button" class="btn secondary danger" id="delete-entry-btn">Delete this entry</button>
+        {% endif %}
         <div id="save-status"></div>
     </form>
 
+    {% if not editing %}
     <div class="info-box" style="margin-top:26px;">
-        Entries stored: <strong>{{ entry_count }}</strong>
+        Entries stored: <strong>{{ entry_count }}</strong>. Need to fix a past entry?
+        <a href="/entries">Edit existing entries</a>.
     </div>
+    {% endif %}
 </div>
 {% endblock %}
 

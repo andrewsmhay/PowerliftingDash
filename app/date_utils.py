@@ -1,17 +1,11 @@
-"""Parsing for the sheet's date column, entered manually as dd/mm/yyyy.
+"""Parsing for the entry date field, entered manually as dd/mm/yyyy.
 
-Google Sheets can hand back a date cell as either:
-  - a literal string, if the column is formatted as plain text ("12/08/2026")
-  - a serial number of days since the Sheets epoch (1899-12-30), if the
-    column is formatted as an actual Date
-so both are handled explicitly. dd/mm/yyyy is parsed with an explicit
-format string, never a locale-guessing parser, so 03/04 is never silently
-flipped to April the 3rd.
+dd/mm/yyyy is parsed with an explicit format string, never a locale-guessing
+parser, so 03/04 is never silently flipped to April the 3rd.
 """
 import re
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 
-SHEETS_EPOCH = date(1899, 12, 30)
 DDMMYYYY_RE = re.compile(r"^(\d{1,2})/(\d{1,2})/(\d{4})$")
 
 
@@ -19,13 +13,10 @@ class DateParseError(ValueError):
     pass
 
 
-def parse_sheet_date(raw) -> date:
+def parse_entry_date(raw) -> date:
     """Returns a date object, or raises DateParseError."""
     if raw is None or raw == "":
-        raise DateParseError("empty date cell")
-
-    if isinstance(raw, (int, float)):
-        return SHEETS_EPOCH + timedelta(days=int(raw))
+        raise DateParseError("empty date value")
 
     text = str(raw).strip()
 
@@ -37,7 +28,7 @@ def parse_sheet_date(raw) -> date:
         except ValueError as exc:
             raise DateParseError(f"invalid dd/mm/yyyy value: {text!r}") from exc
 
-    # Fall back to an explicit strptime in case the cell has a time
+    # Fall back to an explicit strptime in case the value has a time
     # component too (dd/mm/yyyy HH:MM:SS), still with an explicit format.
     for fmt in ("%d/%m/%Y %H:%M:%S", "%d/%m/%Y %H:%M"):
         try:

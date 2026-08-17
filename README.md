@@ -9,18 +9,14 @@ run full screen on a monitor (kiosk-style).
 - **Frontend:** server-rendered dark dashboard, vanilla JS + a locally
   vendored copy of Chart.js (no CDN calls at runtime, so it works offline
   once built).
-- **Data source (primary):** the **New entry** page (`/entries/new`) built
-  into the app itself. You type today's numbers into a web form; everything
-  derivable (remaining, competition deltas, totals, "to date" figures) is
-  calculated automatically and never typed in by hand.
-- **Data source (optional, dormant by default):** a Google Sheet tab you
-  maintain, with one row per dated entry. This only activates once you set
-  a Google Sheet ID on the **Settings** page (`/settings`) - leave it blank
-  and the app runs purely from manual entries.
+- **Data entry:** the **New entry** page (`/entries/new`) built into the
+  app itself is the only way numbers get in - there is no external sync.
+  You type today's numbers into a web form; everything derivable
+  (remaining, competition deltas, totals, "to date" figures) is calculated
+  automatically and never typed in by hand. Past entries can be corrected
+  or removed on the **Manage entries** page (`/entries`).
 - **Storage:** SQLite, one `entries` row per calendar date (primary key is
-  a UUID, generated once per date and kept stable across re-saves/re-syncs).
-  Each row is tagged with a `source` column (`manual` or `sheet_sync`) so
-  you can always tell where a given date's numbers came from.
+  a UUID, generated once per date and kept stable across edits).
 - **Targets and competition numbers (hardcoded goals):** your 1RM targets,
   1RM competition numbers, and body-composition/BMI/BMR targets are set
   once on the **Targets** page (`/targets`), not typed in with every dated
@@ -29,8 +25,8 @@ run full screen on a monitor (kiosk-style).
 
 ## Screenshots
 
-All four below are running against eight weeks of made-up demo data (a
-fictional powerlifter cutting body fat while building toward a target
+All screenshots below are running against eight weeks of made-up demo data
+(a fictional powerlifter cutting body fat while building toward a target
 total), seeded straight into a scratch database purely to illustrate the
 layout - none of it is real training or health data.
 
@@ -42,22 +38,32 @@ layout - none of it is real training or health data.
 
 ![New entry form](docs/screenshots/entry_form.png)
 
+**Manage entries** - review, edit or delete a past dated entry:
+
+![Manage entries page](docs/screenshots/entries_list.png)
+
+**Edit entry** - correct a mistake or backfill a missed value on an existing
+dated entry:
+
+![Edit entry page](docs/screenshots/entry_edit.png)
+
 **Targets** - 1RM targets, competition numbers and body-composition goals,
 set once rather than typed in with every dated entry:
 
 ![Targets page](docs/screenshots/targets.png)
 
-**Settings** - optional Google Sheet sync configuration:
+**Settings** - timezone, entry count, and the danger zone:
 
 ![Settings page](docs/screenshots/settings.png)
 
 ## How the schema was built
 
-The SQLite schema is generated from the **v1** tab of the source Google
-Sheet's data dictionary (Area / Item / Description / Measurement-Type /
-"Configured in Settings as Manual Input?" / "Read from New Date Entry?").
-Every Item on that tab becomes exactly one column, split across two
-tables by what kind of value it is:
+The SQLite schema was generated from the **v1** tab of a Google Sheet data
+dictionary (Area / Item / Description / Measurement-Type / "Configured in
+Settings as Manual Input?" / "Read from New Date Entry?") used only as a
+one-time source for column definitions - the app itself has no live
+connection to that or any other spreadsheet. Every Item on that tab became
+exactly one column, split across two tables by what kind of value it is:
 
 - **`entries`** (32 columns) - anything that changes with a dated
   reading: the 9 daily manual inputs (squat/bench/deadlift 1RM current,
@@ -81,15 +87,10 @@ competition)", which are derived status figures, not goals, and stay on
 - `schema/v1_items.csv` - a checked-in copy of the v1 tab, kept as the
   source of truth for column generation.
 - `schema/generate_schema.py` - regenerates `app/schema.sql` and
-  `app/schema_manifest.json` from that CSV. Re-run it if the v1 tab
-  changes:
+  `app/schema_manifest.json` from that CSV. Re-run it if the CSV changes:
   ```bash
   python3 schema/generate_schema.py
   ```
-- The sync job (`app/sync.py`) matches your sheet's header row against the
-  generated column names (case/spacing/punctuation-insensitive), so your
-  sheet's header text can read exactly like the Item names in the v1 tab
-  ("Squat 1RM (current)", "BMI (target)", etc.) without any manual mapping.
 
 ## Logging your daily entry (primary workflow)
 
@@ -101,15 +102,35 @@ competition)", which are derived status figures, not goals, and stay on
 3. Every field is pre-filled with your most recent entry's values, grouped
    by area (Goals / Status), so you usually only need to change the one or
    two numbers that actually moved.
-4. Hit **Save entry**. The row is saved with `source="manual"`, and all
-   derived columns (remaining, competition deltas, totals, "to date"
-   figures) are recalculated for every stored date - not just the one you
-   just saved - so backfilling an earlier date always keeps history
-   consistent.
+4. Fill in the Lifts section, the Body composition section, or both - a
+   section left blank is simply not recorded for that date rather than
+   rejected, so a gym day and a weigh-in day don't have to be the same
+   day. At least one value somewhere on the form is required.
+5. Hit **Save entry**. All derived columns (remaining, competition deltas,
+   totals, "to date" figures) are recalculated for every stored date - not
+   just the one you just saved - so backfilling an earlier date always
+   keeps history consistent.
 
 Target and competition fields do not appear on this form, and posting
 one to `/api/entries` is rejected with a `400` pointing you to `/targets`
 instead - see the next section.
+
+## Managing past entries
+
+Open `/entries` (there's an **Entries** link on the dashboard's top bar,
+and a link from `/settings`) to see every stored date, newest first.
+
+- **Edit** an entry to open it in the same form used for new entries, with
+  its existing values pre-filled. Saving an edit replaces that entry's
+  full set of values - clearing a field and saving removes that value from
+  the entry rather than leaving the old number in place. At least one
+  value must remain, and changing the date to one that already has an
+  entry is rejected with a `400` telling you to edit that entry instead.
+- **Delete** a single entry from its edit page.
+- **Delete every entry** from the danger zone on `/settings` - this
+  requires ticking an "I understand" confirmation checkbox before the
+  button is enabled, and cannot be undone. Targets and competition
+  numbers are untouched, since they live on a separate `app_settings` row.
 
 ## Setting your targets and competition numbers
 
@@ -129,72 +150,6 @@ rather than on `/entries/new`:
 Because they're config rather than per-date data, target and competition
 values are intentionally excluded from `/entries/new`: posting one there
 returns a `400` telling you to use `/targets` instead.
-
-## Setting up the optional Google Sheet sync
-
-Sheet sync is off by default. If you'd also like to pull dated rows in
-from a spreadsheet (e.g. to bulk-load history, or keep a spreadsheet copy
-in sync), fill in the Sheet ID and tab name on `/settings`:
-
-1. Add a tab with a header row (the tab name is blank/unset until you
-   configure it in Settings - the tab must hold dated rows, one row
-   per date, not the metric catalogue/definitions layout used by this
-   project's own `schema/v1_items.csv`).
-2. One column must be your date column (default header: `Date`,
-   configurable in Settings), with values entered as **dd/mm/yyyy**
-   (e.g. `12/08/2026`).
-3. Add one column per metric you want tracked, using header text that
-   matches an Item name from `schema/v1_items.csv` (spelling/case/spacing
-   don't need to match exactly - "squat 1rm current" and
-   "Squat 1RM (current)" both map to the same column).
-4. Add one row per dated entry. Columns you don't fill in are simply
-   stored as empty for that date.
-
-Rows pulled in this way are tagged `source="sheet_sync"`. Manual entries
-for the same date always take precedence going forward if you later edit
-that date through `/entries/new` (upsert is keyed on `entry_date`, so
-whichever save happens most recently wins).
-
-> **Schema verified against the live sheet, but no dated-entries tab exists
-> yet.** An earlier attempt to read the linked Google Sheet returned a 403
-> even after the Google account was connected, so `schema/v1_items.csv` was
-> generated from an uploaded export instead. That access issue has since
-> been resolved (it was a stale connector session, not a permissions
-> problem on the sheet itself), and a live read confirms all 44 v1 items -
-> area, item name, description and unit - match the checked-in CSV exactly,
-> aside from the BMI/BMR description and manual-input-flag edits made
-> deliberately in this repo (see "How the schema was built" above).
->
-> What's still unverified is the header-matching logic itself
-> (`app/sync.py::_normalise_header`) against a real dated-entries tab,
-> because the sheet doesn't have one: both existing tabs (`v1` and `v2`) are
-> metric catalogues/data dictionaries, one row per Item, not one row per
-> date. `v2` also defines 17 further items (MyFitnessPal nutrition targets,
-> and an Event countdown) that this project's schema doesn't cover yet,
-> since the original scope was v1 only. On your first real sync against a
-> tab you create yourself, check the Settings page's sync status message
-> for any columns it couldn't map. If a header doesn't match, either rename
-> it to match an Item name in `schema/v1_items.csv` or re-run
-> `schema/generate_schema.py` against your actual headers.
-
-## Google authentication
-
-The app talks to the Sheets API as a **service account** (the only sane
-option for something running unattended on a monitor, with no browser).
-Credential resolution order (see `app/auth_provider.py`):
-
-1. A service account JSON key pasted into the Settings page.
-2. `PLD_GOOGLE_SERVICE_ACCOUNT_JSON` environment variable (raw JSON).
-3. `PLD_GOOGLE_SERVICE_ACCOUNT_FILE` environment variable (path to a
-   mounted key file).
-4. A key file dropped straight into the data volume at
-   `/data/service_account.json`.
-
-Once configured, the Settings page shows the service account's email
-address - share your Google Sheet with that address (Viewer access is
-enough) and you're set. The credential mechanism is intentionally
-pluggable behind `auth_provider.load_credentials()`, so it's
-straightforward to swap in a different approach later.
 
 ## Running it
 
@@ -216,8 +171,7 @@ docker run -d --name powerliftingdash \
 
 Then open `http://<host>:8080/` full screen on the monitor. Log your
 first entry at `http://<host>:8080/entries/new` - no other configuration
-is required. Visit `http://<host>:8080/settings` only if you also want to
-wire up the optional Google Sheet sync.
+is required.
 
 ### Multi-architecture builds
 
@@ -229,46 +183,25 @@ docker buildx build --platform linux/amd64,linux/arm64 \
   -t <your-registry>/powerliftingdash:latest --push .
 ```
 
-## Syncing (only relevant if Sheet sync is configured)
-
-- Sync is dormant until a Google Sheet ID is set in Settings. With no
-  Sheet ID configured, the app runs entirely on manual entries and this
-  section doesn't apply.
-- **Automatic:** once a Sheet ID is set, a background thread re-pulls the
-  sheet on the interval configured in Settings (default every 10
-  minutes), and picks up interval changes on its next cycle without a
-  restart.
-- **Manual:** hit "Sync now" on the Settings page, or `POST /api/sync`.
-- Sync is idempotent: re-syncing the same date updates that date's row in
-  place rather than creating a duplicate (matched on `entry_date`, unique
-  in the schema), and tags the row `source="sheet_sync"`.
-- After every sync, `derive.recompute_all()` re-derives every stored
-  date's calculated columns, so a sheet backfill of earlier history
-  rebaselines "to date" figures correctly.
-
 ## Project layout
 
 ```
 app/
   main.py            FastAPI app, startup/shutdown hooks
   config.py          Environment-driven configuration
-  db.py              SQLite access, upsert logic, app_settings config (get_config/update_config)
-  numeric.py         Shared numeric string coercion (manual form + sheet sync)
+  db.py              SQLite access, upsert/edit/delete logic, app_settings config
+  numeric.py         Shared numeric string coercion for the manual entry form
   derive.py          Computes all "read from new date entry" columns from a config snapshot
-  date_utils.py      Explicit dd/mm/yyyy + Sheets-serial date parsing
-  auth_provider.py   Pluggable Google credential loading
-  sheets_client.py   Google Sheets API read
-  sync.py            Header-to-column mapping, sheet -> SQLite sync (dormant by default)
-  scheduler.py       Background thread; only calls sync.py if a Sheet ID is set
+  date_utils.py      Explicit dd/mm/yyyy date parsing
   metrics.py         Raw entry row + config -> dashboard card/chart payload
-  routes/            Page routes (dashboard, entries/new, targets, settings) and JSON API
-  templates/         Jinja2 templates (including targets.html)
-  static/            CSS, JS (including targets.js), vendored Chart.js
+  routes/            Page routes (dashboard, entries, targets, settings) and JSON API
+  templates/         Jinja2 templates (dashboard, entry_form, entries_list, targets, settings)
+  static/            CSS, JS, vendored Chart.js
   schema.sql, schema_manifest.json   Generated - do not hand-edit
 schema/
-  v1_items.csv        Source-of-truth data dictionary (v1 tab)
+  v1_items.csv        Source-of-truth data dictionary
   generate_schema.py   Regenerates the schema from the CSV above; splits entries vs app_settings
-tests/                 pytest unit tests (date parsing, sync mapping, DB, derive, entries route, targets route)
+tests/                 pytest unit tests (date parsing, DB, derive, entries route, targets route)
 Dockerfile             Multi-stage, slim Alpine, multi-arch
 docker-compose.yml
 ```
@@ -283,14 +216,9 @@ python3 -m pytest tests/ -v
 
 ## Notes and assumptions
 
-- **Manual entry is the primary and intended workflow.** Both the v1 and
-  v2 tabs of the source spreadsheet turned out to be schema-definition
-  catalogues (Area / Item / Description / Measurement-Type / flags), not
-  dated data-entry tables, so there was never a live sheet of daily rows
-  to sync against. The `/entries/new` web form is the canonical place
-  numbers get logged; Sheet sync exists as an optional secondary path for
-  anyone who later wants to feed rows in from a real dated-rows
-  spreadsheet.
+- **Manual entry is the only workflow.** The `/entries/new` web form is
+  the sole place numbers get logged; there is no external data source or
+  background job of any kind.
 - The v1 tab's "Configured in Settings as Manual Input?" column drives
   which columns appear on the `/entries/new` form (`configured_in_settings`
   in `schema_manifest.json`). The "Read from New Date Entry?" column
@@ -307,31 +235,16 @@ python3 -m pytest tests/ -v
   non-null historical value" convention.
 - `derive.recompute_all()` reloads every entry oldest-first and
   recomputes every derived column on every row each time it runs (after
-  every manual save and after every sheet sync). This is what keeps
-  "to date" baselines correct if you ever backfill an earlier date after
-  later ones already exist.
-- `app_settings` (Google Sheet ID, tab name, credentials, sync interval)
-  is a separate table from `entries` and is not part of the v1 schema -
-  it's the app's own configuration, editable from `/settings`, and the
-  Sheet ID field is left blank by default (sync stays dormant).
-- A future v2 tab (MyFitnessPal macros, event countdown) is not yet
-  wired into the schema; re-run `schema/generate_schema.py` against an
-  updated `v1_items.csv` (or a new source) to extend it.
-- **Upgrading an existing database:** the `entries_tab_name` default
-  changed from `'v1'` to `''` in this version. `INSERT OR IGNORE` only
-  seeds that value on a brand-new `app_settings` table, so an existing
-  database created before this change will still have `'v1'` stored
-  (the wrong value - v1 is a catalogue tab, not a dated-rows tab) and
-  Sheet sync will fail with a clear error until you either clear it from
-  `/settings` or run:
-  ```sql
-  UPDATE app_settings SET entries_tab_name = '' WHERE entries_tab_name = 'v1';
-  ```
-  This has no effect on manual entries, which don't touch this setting.
+  every manual save, edit or delete). This is what keeps "to date"
+  baselines correct if you ever backfill, edit or remove an earlier date
+  after later ones already exist.
+- A future v2 metric set (MyFitnessPal macros, event countdown) is not yet
+  wired into the schema; extend `schema/v1_items.csv` and re-run
+  `schema/generate_schema.py` to add it.
 - **Upgrading an existing database for the `/targets` split:** older
   databases stored target/competition values as columns on `entries`.
-  `db.init_db()` now runs two migration steps automatically on startup,
-  so nothing manual is required on your Pi:
+  `db.init_db()` runs two migration steps automatically on startup, so
+  nothing manual is required on your Pi:
   1. `_ensure_config_columns()` - idempotent `ALTER TABLE app_settings ADD
      COLUMN` for each of the 12 target/competition columns, safe to run
      on every startup (it checks the existing column list first).

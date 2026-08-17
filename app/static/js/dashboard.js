@@ -61,16 +61,13 @@
     );
   }
 
-  function renderStatus(status, syncedAt) {
-    const dot = document.querySelector("#sync-status .status-dot");
-    const text = document.getElementById("sync-status-text");
-    dot.className = "status-dot " + (status || "");
-    if (!syncedAt) {
-      text.textContent = "Not synced yet";
+  function renderEntryCount(count) {
+    const badge = document.getElementById("entry-count-badge");
+    if (count === null || count === undefined) {
+      badge.textContent = "--";
       return;
     }
-    const date = new Date(syncedAt);
-    text.textContent = "Synced " + date.toLocaleString();
+    badge.textContent = count + (count === 1 ? " entry" : " entries");
   }
 
   let liftChart = null;
@@ -152,7 +149,7 @@
       ? "Latest entry: " + data.latest_entry_date
       : "No entries yet";
 
-    renderStatus(data.last_sync_status, data.last_sync_at);
+    renderEntryCount(data.entry_count);
     renderCharts(data.history || []);
   }
 

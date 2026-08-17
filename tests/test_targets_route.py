@@ -17,7 +17,7 @@ def make_client(monkeypatch):
 
     importlib.reload(db)
 
-    from app import derive, scheduler
+    from app import derive
     from app.routes import entries, pages, targets
 
     importlib.reload(derive)
@@ -31,7 +31,6 @@ def make_client(monkeypatch):
 
     from fastapi.testclient import TestClient
 
-    monkeypatch.setattr(scheduler, "start", lambda: None)
     db.init_db()
     return TestClient(main_module.app)
 

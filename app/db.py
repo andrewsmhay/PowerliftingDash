@@ -1,5 +1,5 @@
 """SQLite access layer. One connection per request via FastAPI dependency;
-WAL mode so the background sync job and web requests don't block each other.
+WAL mode so concurrent web requests don't block each other.
 """
 import json
 import sqlite3
@@ -160,14 +160,6 @@ def update_settings(**fields) -> None:
         conn.execute(f"UPDATE app_settings SET {columns} WHERE id = 1", values)
 
 
-def record_sync_result(status: str, message: str) -> None:
-    update_settings(
-        last_sync_at=datetime.now(timezone.utc).isoformat(),
-        last_sync_status=status,
-        last_sync_message=message,
-    )
-
-
 def get_latest_entry() -> dict | None:
     with connection() as conn:
         row = conn.execute(
@@ -282,3 +274,61 @@ def get_entry_by_date(entry_date_iso: str) -> dict | None:
             "SELECT * FROM entries WHERE entry_date = ?", (entry_date_iso,)
         ).fetchone()
         return row
+
+
+def get_entry_by_id(entry_id: str) -> dict | None:
+    with connection() as conn:
+        row = conn.execute("SELECT * FROM entries WHERE id = ?", (entry_id,)).fetchone()
+        return row
+
+
+def get_all_entries_desc() -> list[dict]:
+    """Every entry, newest first - used by the /entries management list."""
+    with connection() as conn:
+        rows = conn.execute("SELECT * FROM entries ORDER BY entry_date DESC").fetchall()
+    return rows
+
+
+def update_entry_full(
+    entry_id: str,
+    entry_date_iso: str,
+    manual_values: dict,
+    manual_columns: list[str],
+    source: str = "manual",
+) -> None:
+    """Edit-mode update for a specific entry (by id, not by date).
+
+    Unlike `upsert_entry` (used by the daily quick-add form, where a column
+    absent from the payload is left untouched so a "weight only" or "goals
+    only" save doesn't blank out the other section), this treats
+    `manual_values` as the full, authoritative state of every manual column:
+    anything not present is written as NULL, so clearing a field on the edit
+    screen and saving actually clears it. Also allows moving the entry to a
+    different `entry_date` - callers must check for a date collision with
+    another row first (see routes/entries.py).
+    """
+    now = datetime.now(timezone.utc).isoformat()
+    safe_values = {c: manual_values.get(c) for c in manual_columns}
+    set_clause = ", ".join(f"{c} = ?" for c in safe_values)
+    with connection() as conn:
+        conn.execute(
+            f"UPDATE entries SET entry_date = ?, {set_clause}, source = ?, updated_at = ? "
+            "WHERE id = ?",
+            [entry_date_iso, *safe_values.values(), source, now, entry_id],
+        )
+
+
+def delete_entry(entry_id: str) -> bool:
+    """Deletes a single entry by id. Returns True if a row was removed."""
+    with connection() as conn:
+        cur = conn.execute("DELETE FROM entries WHERE id = ?", (entry_id,))
+        return cur.rowcount > 0
+
+
+def delete_all_entries() -> int:
+    """Wipes every row from `entries` (leaves `app_settings` - targets and
+    competition numbers - untouched). Returns the number of rows removed.
+    """
+    with connection() as conn:
+        cur = conn.execute("DELETE FROM entries")
+        return cur.rowcount

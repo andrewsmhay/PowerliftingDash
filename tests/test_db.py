@@ -48,11 +48,10 @@ def test_upsert_entry_creates_new_row_for_new_date(monkeypatch):
 def test_settings_round_trip(monkeypatch):
     db = make_temp_db(monkeypatch)
 
-    db.update_settings(google_sheet_id="abc123", sync_interval_minutes=15)
+    db.update_settings(timezone="Europe/Dublin")
     settings = db.get_settings()
 
-    assert settings["google_sheet_id"] == "abc123"
-    assert settings["sync_interval_minutes"] == 15
+    assert settings["timezone"] == "Europe/Dublin"
 
 
 def test_upsert_entry_defaults_source_to_manual(monkeypatch):
@@ -64,22 +63,22 @@ def test_upsert_entry_defaults_source_to_manual(monkeypatch):
     assert latest["source"] == "manual"
 
 
-def test_upsert_entry_records_sheet_sync_source(monkeypatch):
+def test_upsert_entry_records_custom_source(monkeypatch):
     db = make_temp_db(monkeypatch)
 
     db.upsert_entry(
-        "2026-08-01", 2, {"squat_1rm_current": 150.0}, source="sheet_sync"
+        "2026-08-01", 2, {"squat_1rm_current": 150.0}, source="bulk_import"
     )
 
     latest = db.get_latest_entry()
-    assert latest["source"] == "sheet_sync"
+    assert latest["source"] == "bulk_import"
 
 
-def test_manual_save_overwrites_sheet_sync_source_for_same_date(monkeypatch):
+def test_manual_save_overwrites_custom_source_for_same_date(monkeypatch):
     db = make_temp_db(monkeypatch)
 
     db.upsert_entry(
-        "2026-08-01", 2, {"squat_1rm_current": 150.0}, source="sheet_sync"
+        "2026-08-01", 2, {"squat_1rm_current": 150.0}, source="bulk_import"
     )
     db.upsert_entry("2026-08-01", None, {"squat_1rm_current": 155.0}, source="manual")
 

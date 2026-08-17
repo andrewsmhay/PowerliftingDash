@@ -1,6 +1,5 @@
-"""Shared numeric coercion, used by both the Sheets sync path and the manual
-entry form so a value typed as "1,234" or left blank behaves identically
-regardless of where it came from.
+"""Shared numeric coercion for the manual entry form, so a value typed as
+"1,234" or left blank is handled consistently.
 """
 
 

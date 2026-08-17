@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
-from .. import auth_provider, config, db, metrics
+from .. import config, db, metrics
 
 router = APIRouter()
 
@@ -12,6 +12,7 @@ def dashboard(request: Request):
     history = db.get_entries(limit=180)
     app_config = db.get_config()
     payload = metrics.build_dashboard_payload(latest, history, app_config)
+    payload["entry_count"] = db.count_entries()
     return request.app.state.templates.TemplateResponse(
         "dashboard.html",
         {
@@ -30,7 +31,6 @@ def settings_page(request: Request):
         {
             "request": request,
             "settings": settings,
-            "service_account_email": auth_provider.service_account_email(settings),
             "entry_count": db.count_entries(),
         },
     )

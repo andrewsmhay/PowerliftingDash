@@ -113,8 +113,8 @@ def build_sql(columns):
         "CREATE TABLE IF NOT EXISTS entries (",
         "    id TEXT PRIMARY KEY,            -- UUID4, generated on first insert",
         "    entry_date TEXT NOT NULL UNIQUE, -- ISO 8601 (YYYY-MM-DD), entered as dd/mm/yyyy",
-        "    source TEXT NOT NULL DEFAULT 'manual', -- 'manual' (web UI form) or 'sheet_sync' (dormant Sheets path)",
-        "    source_row_number INTEGER,       -- row number in the Google Sheet, only set for source='sheet_sync'",
+        "    source TEXT NOT NULL DEFAULT 'manual', -- always 'manual' (entered via the web UI form)",
+        "    source_row_number INTEGER,       -- reserved for future bulk-import sources; unused for manual entries",
         "    created_at TEXT NOT NULL,        -- ISO 8601 UTC timestamp, first save",
         "    updated_at TEXT NOT NULL,        -- ISO 8601 UTC timestamp, most recent save",
     ]
@@ -130,15 +130,7 @@ def build_sql(columns):
     lines.append("")
     lines.append("CREATE TABLE IF NOT EXISTS app_settings (")
     lines.append("    id INTEGER PRIMARY KEY CHECK (id = 1),  -- single row")
-    lines.append("    google_sheet_id TEXT,")
-    lines.append("    entries_tab_name TEXT NOT NULL DEFAULT '',")
-    lines.append("    date_column_name TEXT NOT NULL DEFAULT 'Date',")
-    lines.append("    sync_interval_minutes INTEGER NOT NULL DEFAULT 10,")
     lines.append("    timezone TEXT NOT NULL DEFAULT 'America/Toronto',")
-    lines.append("    service_account_json TEXT,  -- pasted service account credentials, JSON")
-    lines.append("    last_sync_at TEXT,")
-    lines.append("    last_sync_status TEXT,")
-    lines.append("    last_sync_message TEXT,")
     for col in config_cols:
         lines.append(
             f"    {col['column']} {col['sql_type']},  "
@@ -148,8 +140,7 @@ def build_sql(columns):
     lines.append(");")
     lines.append("")
     lines.append(
-        "INSERT OR IGNORE INTO app_settings (id, entries_tab_name, date_column_name, sync_interval_minutes, timezone) "
-        "VALUES (1, '', 'Date', 10, 'America/Toronto');"
+        "INSERT OR IGNORE INTO app_settings (id, timezone) VALUES (1, 'America/Toronto');"
     )
     lines.append("")
     return "\n".join(lines)

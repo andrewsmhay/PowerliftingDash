@@ -7,42 +7,36 @@ from datetime import date
 
 import pytest
 
-from app.date_utils import DateParseError, parse_sheet_date, to_ddmmyyyy, to_iso
+from app.date_utils import DateParseError, parse_entry_date, to_ddmmyyyy, to_iso
 
 
 def test_parses_ddmmyyyy_string():
-    assert parse_sheet_date("03/04/2026") == date(2026, 4, 3)
+    assert parse_entry_date("03/04/2026") == date(2026, 4, 3)
 
 
 def test_parses_single_digit_ddmmyyyy():
-    assert parse_sheet_date("3/4/2026") == date(2026, 4, 3)
+    assert parse_entry_date("3/4/2026") == date(2026, 4, 3)
 
 
 def test_never_flips_to_mmddyyyy():
     # 25 can't be a month, so a mm/dd parser would fail here; a correct
     # dd/mm parser reads day=25, month=1.
-    assert parse_sheet_date("25/01/2026") == date(2026, 1, 25)
-
-
-def test_parses_sheets_serial_number():
-    # Serial 46000 -> 2025-12-16 relative to the Sheets epoch (1899-12-30).
-    result = parse_sheet_date(46000)
-    assert result.year == 2025
+    assert parse_entry_date("25/01/2026") == date(2026, 1, 25)
 
 
 def test_rejects_empty():
     with pytest.raises(DateParseError):
-        parse_sheet_date("")
+        parse_entry_date("")
 
 
 def test_rejects_garbage():
     with pytest.raises(DateParseError):
-        parse_sheet_date("not-a-date")
+        parse_entry_date("not-a-date")
 
 
 def test_rejects_invalid_calendar_date():
     with pytest.raises(DateParseError):
-        parse_sheet_date("31/02/2026")
+        parse_entry_date("31/02/2026")
 
 
 def test_round_trip_iso_and_ddmmyyyy():
