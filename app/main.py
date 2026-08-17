@@ -1,6 +1,7 @@
 import logging
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -27,3 +28,10 @@ def on_startup():
 @app.get("/healthz")
 def healthz():
     return {"status": "ok"}
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    # Browsers probe this path directly regardless of the <link rel="icon">
+    # tag; serve the same SVG mark so it doesn't 404 in the console.
+    return FileResponse(config.APP_DIR / "static" / "favicon.svg", media_type="image/svg+xml")
