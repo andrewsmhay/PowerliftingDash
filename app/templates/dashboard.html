@@ -24,6 +24,8 @@
     </div>
 </div>
 
+<div id="screen-tabs" class="screen-tabs"></div>
+
 {% if not data.latest_entry_date %}
 <div class="empty-state">
     No entries yet. <a href="/entries/new">Log your first entry</a> to start the dashboard.
@@ -36,7 +38,7 @@
 
 {% block scripts %}
 <script>
-window.DASHBOARD_CONFIG = { pollSeconds: {{ poll_seconds }} };
+window.DASHBOARD_CONFIG = { pollSeconds: {{ poll_seconds }}, rotationSeconds: {{ rotation_seconds }} };
 </script>
 <script src="/static/js/gridstack-all.js"></script>
 <script src="/static/js/chart.umd.min.js"></script>

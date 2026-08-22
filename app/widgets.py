@@ -50,39 +50,62 @@ def build_catalog(google_health_configured: bool) -> list[dict]:
     ]
 
 
-def default_layout(google_health_configured: bool) -> list[dict]:
-    """Returns the default layout for the current Google Health configuration."""
-    layout = [
-        {"id": "lift.squat", "x": 0, "y": 0, "w": 3, "h": 5},
-        {"id": "lift.bench", "x": 3, "y": 0, "w": 3, "h": 5},
-        {"id": "lift.deadlift", "x": 6, "y": 0, "w": 3, "h": 5},
-        {"id": "lift.total", "x": 9, "y": 0, "w": 3, "h": 5},
-        {"id": "body.body_weight_mass", "x": 0, "y": 5, "w": 3, "h": 4},
-        {"id": "body.skeletal_muscle_mass", "x": 3, "y": 5, "w": 3, "h": 4},
-        {"id": "body.body_fat_mass", "x": 6, "y": 5, "w": 3, "h": 4},
-        {"id": "body.percent_body_fat", "x": 9, "y": 5, "w": 3, "h": 4},
-        {"id": "index.bmi", "x": 0, "y": 9, "w": 3, "h": 4},
-        {"id": "index.bmr", "x": 3, "y": 9, "w": 3, "h": 4},
-        {"id": "score.dots", "x": 6, "y": 9, "w": 3, "h": 4},
-        {"id": "ratio.squat_bw", "x": 9, "y": 9, "w": 3, "h": 4},
-        {"id": "ratio.bench_bw", "x": 0, "y": 13, "w": 3, "h": 4},
-        {"id": "ratio.deadlift_bw", "x": 3, "y": 13, "w": 3, "h": 4},
-        {"id": "rate.squat", "x": 6, "y": 13, "w": 3, "h": 4},
-        {"id": "rate.bench", "x": 9, "y": 13, "w": 3, "h": 4},
-        {"id": "rate.deadlift", "x": 0, "y": 17, "w": 3, "h": 4},
-        {"id": "projection.squat", "x": 3, "y": 17, "w": 3, "h": 4},
-        {"id": "projection.bench", "x": 6, "y": 17, "w": 3, "h": 4},
-        {"id": "projection.deadlift", "x": 9, "y": 17, "w": 3, "h": 4},
-        {"id": "chart.lifts", "x": 0, "y": 21, "w": 6, "h": 8},
-        {"id": "chart.body_composition", "x": 6, "y": 21, "w": 6, "h": 8},
-        {"id": "pr_timeline.squat", "x": 0, "y": 29, "w": 4, "h": 8},
-        {"id": "pr_timeline.bench", "x": 4, "y": 29, "w": 4, "h": 8},
-        {"id": "pr_timeline.deadlift", "x": 8, "y": 29, "w": 4, "h": 8},
+def default_screens(google_health_configured: bool) -> list[dict]:
+    """Returns the default multi-screen layout for the current Health setup."""
+    screens = [
+        {
+            "id": "screen-lifts-body",
+            "name": "Lifts & Body",
+            "widgets": [
+                {"id": "lift.squat", "x": 0, "y": 0, "w": 3, "h": 6},
+                {"id": "lift.bench", "x": 3, "y": 0, "w": 3, "h": 6},
+                {"id": "lift.deadlift", "x": 6, "y": 0, "w": 3, "h": 6},
+                {"id": "lift.total", "x": 9, "y": 0, "w": 3, "h": 6},
+                {"id": "body.body_weight_mass", "x": 0, "y": 6, "w": 3, "h": 4},
+                {"id": "body.skeletal_muscle_mass", "x": 3, "y": 6, "w": 3, "h": 4},
+                {"id": "body.body_fat_mass", "x": 6, "y": 6, "w": 3, "h": 4},
+                {"id": "body.percent_body_fat", "x": 9, "y": 6, "w": 3, "h": 4},
+                {"id": "index.bmi", "x": 0, "y": 10, "w": 3, "h": 4},
+                {"id": "index.bmr", "x": 3, "y": 10, "w": 3, "h": 4},
+            ],
+        },
+        {
+            "id": "screen-analytics",
+            "name": "Analytics",
+            "widgets": [
+                {"id": "score.dots", "x": 0, "y": 0, "w": 3, "h": 4},
+                {"id": "ratio.squat_bw", "x": 3, "y": 0, "w": 3, "h": 4},
+                {"id": "ratio.bench_bw", "x": 6, "y": 0, "w": 3, "h": 4},
+                {"id": "ratio.deadlift_bw", "x": 9, "y": 0, "w": 3, "h": 4},
+                {"id": "rate.squat", "x": 0, "y": 4, "w": 3, "h": 4},
+                {"id": "rate.bench", "x": 3, "y": 4, "w": 3, "h": 4},
+                {"id": "rate.deadlift", "x": 6, "y": 4, "w": 3, "h": 4},
+                {"id": "projection.squat", "x": 9, "y": 4, "w": 3, "h": 4},
+                {"id": "projection.bench", "x": 0, "y": 8, "w": 3, "h": 4},
+                {"id": "projection.deadlift", "x": 3, "y": 8, "w": 3, "h": 4},
+            ],
+        },
+        {
+            "id": "screen-trends",
+            "name": "Trends",
+            "widgets": [
+                {"id": "chart.lifts", "x": 0, "y": 0, "w": 6, "h": 8},
+                {"id": "chart.body_composition", "x": 6, "y": 0, "w": 6, "h": 8},
+                {"id": "pr_timeline.squat", "x": 0, "y": 8, "w": 4, "h": 8},
+                {"id": "pr_timeline.bench", "x": 4, "y": 8, "w": 4, "h": 8},
+                {"id": "pr_timeline.deadlift", "x": 8, "y": 8, "w": 4, "h": 8},
+            ],
+        },
     ]
     if google_health_configured:
-        layout.extend([
-            {"id": "health.steps", "x": 0, "y": 37, "w": 4, "h": 4},
-            {"id": "health.resting_heart_rate", "x": 4, "y": 37, "w": 4, "h": 4},
-            {"id": "health.sleep_minutes", "x": 8, "y": 37, "w": 4, "h": 4},
-        ])
-    return layout
+        screens.append({
+            "id": "screen-activity-recovery",
+            "name": "Activity & Recovery",
+            "widgets": [
+                {"id": "health.steps", "x": 0, "y": 0, "w": 4, "h": 4},
+                {"id": "health.resting_heart_rate", "x": 4, "y": 0, "w": 4, "h": 4},
+                {"id": "health.sleep_minutes", "x": 8, "y": 0, "w": 4, "h": 4},
+                {"id": "chart.activity_recovery_trend", "x": 0, "y": 4, "w": 12, "h": 8},
+            ],
+        })
+    return screens

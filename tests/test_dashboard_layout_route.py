@@ -1,4 +1,5 @@
 import importlib
+import json
 import sys
 import tempfile
 from pathlib import Path
@@ -30,30 +31,64 @@ def make_client(monkeypatch):
     return TestClient(main_module.app), db
 
 
-def test_layout_returns_default_when_unset(monkeypatch):
+def test_layout_returns_default_screens_when_unset(monkeypatch):
     client, _db = make_client(monkeypatch)
     response = client.get("/api/dashboard/layout")
+    body = response.json()
     assert response.status_code == 200
-    assert response.json()["is_default"] is True
-    assert response.json()["widgets"]
+    assert body["is_default"] is True
+    assert len(body["screens"]) == 3
+    assert body["screens"][0]["name"] == "Lifts & Body"
+    assert body["rotation_seconds"] == 30
 
 
-def test_layout_post_round_trips_valid_items(monkeypatch):
-    client, _db = make_client(monkeypatch)
+def test_legacy_flat_list_loads_as_one_screen(monkeypatch):
+    client, db = make_client(monkeypatch)
     widgets = [{"id": "lift.squat", "x": 1, "y": 2, "w": 3, "h": 4}]
-    assert client.post("/api/dashboard/layout", json={"widgets": widgets}).status_code == 200
-    response = client.get("/api/dashboard/layout")
-    assert response.json() == {"widgets": widgets, "is_default": False}
+    db.update_settings(dashboard_layout=json.dumps(widgets))
+
+    body = client.get("/api/dashboard/layout").json()
+
+    assert body["is_default"] is False
+    assert body["screens"] == [{
+        "id": "legacy-dashboard",
+        "name": "Dashboard",
+        "widgets": widgets,
+    }]
+
+
+def test_layout_post_round_trips_multiple_screens(monkeypatch):
+    client, _db = make_client(monkeypatch)
+    screens = [
+        {
+            "id": "screen-lifts",
+            "name": "Lifts",
+            "widgets": [{"id": "lift.squat", "x": 1, "y": 2, "w": 3, "h": 4}],
+        },
+        {
+            "id": "screen-trends",
+            "name": "Trends",
+            "widgets": [{"id": "chart.lifts", "x": 0, "y": 0, "w": 6, "h": 8}],
+        },
+    ]
+    assert client.post("/api/dashboard/layout", json={"screens": screens}).status_code == 200
+    body = client.get("/api/dashboard/layout").json()
+    assert body["screens"] == screens
+    assert body["is_default"] is False
 
 
 def test_layout_post_discards_unknown_widgets_but_keeps_request_successful(monkeypatch):
     client, _db = make_client(monkeypatch)
-    response = client.post("/api/dashboard/layout", json={"widgets": [
-        {"id": "unknown.widget", "x": 0, "y": 0, "w": 3, "h": 4},
-        {"id": "lift.bench", "x": 3, "y": 0, "w": 3, "h": 4},
-    ]})
+    response = client.post("/api/dashboard/layout", json={"screens": [{
+        "id": "screen-one",
+        "name": "One",
+        "widgets": [
+            {"id": "unknown.widget", "x": 0, "y": 0, "w": 3, "h": 4},
+            {"id": "lift.bench", "x": 3, "y": 0, "w": 3, "h": 4},
+        ],
+    }]})
     assert response.status_code == 200
-    assert client.get("/api/dashboard/layout").json()["widgets"] == [
+    assert client.get("/api/dashboard/layout").json()["screens"][0]["widgets"] == [
         {"id": "lift.bench", "x": 3, "y": 0, "w": 3, "h": 4}
     ]
 
@@ -61,13 +96,33 @@ def test_layout_post_discards_unknown_widgets_but_keeps_request_successful(monke
 def test_layout_keeps_gated_widget_when_google_health_is_unconfigured(monkeypatch):
     client, _db = make_client(monkeypatch)
     widget = {"id": "health.steps", "x": 0, "y": 0, "w": 3, "h": 4}
-    assert client.post("/api/dashboard/layout", json={"widgets": [widget]}).status_code == 200
-    assert client.get("/api/dashboard/layout").json()["widgets"] == [widget]
+    payload = {"screens": [{"id": "screen-health", "name": "Health", "widgets": [widget]}]}
+    assert client.post("/api/dashboard/layout", json=payload).status_code == 200
+    assert client.get("/api/dashboard/layout").json()["screens"][0]["widgets"] == [widget]
+
+
+def test_screen_add_remove_and_rename_payload_shape(monkeypatch):
+    client, _db = make_client(monkeypatch)
+    initial = {"screens": [
+        {"id": "screen-one", "name": "Original", "widgets": []},
+        {"id": "screen-two", "name": "New screen", "widgets": [{"id": "lift.total", "x": 0, "y": 0, "w": 3, "h": 6}]},
+    ]}
+    assert client.post("/api/dashboard/layout", json=initial).status_code == 200
+
+    updated = {"screens": [
+        {"id": "screen-two", "name": "Competition", "widgets": [{"id": "lift.total", "x": 0, "y": 0, "w": 3, "h": 6}]},
+    ]}
+    assert client.post("/api/dashboard/layout", json=updated).status_code == 200
+    assert client.get("/api/dashboard/layout").json()["screens"] == updated["screens"]
 
 
 def test_layout_reset_returns_to_default(monkeypatch):
     client, db = make_client(monkeypatch)
-    client.post("/api/dashboard/layout", json={"widgets": [{"id": "lift.squat", "x": 0, "y": 0, "w": 3, "h": 4}]})
+    client.post("/api/dashboard/layout", json={"screens": [{
+        "id": "screen-one",
+        "name": "One",
+        "widgets": [{"id": "lift.squat", "x": 0, "y": 0, "w": 3, "h": 4}],
+    }]})
     assert client.post("/api/dashboard/layout/reset").status_code == 200
     assert db.get_settings()["dashboard_layout"] is None
     assert client.get("/api/dashboard/layout").json()["is_default"] is True

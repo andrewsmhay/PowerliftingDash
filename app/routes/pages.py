@@ -23,6 +23,7 @@ def dashboard(request: Request):
             "request": request,
             "data": payload,
             "poll_seconds": config.DASHBOARD_POLL_SECONDS,
+            "rotation_seconds": settings.get("dashboard_rotation_seconds") or 30,
             "page_title": dashboard_title(settings.get("display_name")),
         },
     )

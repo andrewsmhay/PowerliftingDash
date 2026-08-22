@@ -3,7 +3,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.widgets import WIDGET_CATALOG, build_catalog, default_layout
+from app.widgets import WIDGET_CATALOG, build_catalog, default_screens
 
 
 def test_catalog_contains_all_widgets_when_google_health_is_configured():
@@ -19,15 +19,20 @@ def test_catalog_hides_every_google_health_widget_when_unconfigured():
     assert gated_ids.isdisjoint(visible_ids)
 
 
-def test_default_layout_only_adds_initial_health_cards_when_configured():
-    without_health = {item["id"] for item in default_layout(False)}
-    with_health = {item["id"] for item in default_layout(True)}
+def test_default_screens_only_add_activity_recovery_when_configured():
+    without_health = default_screens(False)
+    with_health = default_screens(True)
+    without_health_ids = {item["id"] for screen in without_health for item in screen["widgets"]}
+    with_health_ids = {item["id"] for screen in with_health for item in screen["widgets"]}
     initial_health_ids = {"health.steps", "health.resting_heart_rate", "health.sleep_minutes"}
-    assert initial_health_ids.isdisjoint(without_health)
-    assert initial_health_ids.issubset(with_health)
+    assert len(without_health) == 3
+    assert len(with_health) == 4
+    assert initial_health_ids.isdisjoint(without_health_ids)
+    assert initial_health_ids.issubset(with_health_ids)
 
 
-def test_every_default_layout_widget_exists_in_the_catalogue():
+def test_every_default_screen_widget_exists_in_the_catalogue():
     catalog_ids = {widget["id"] for widget in WIDGET_CATALOG}
     for configured in (False, True):
-        assert {item["id"] for item in default_layout(configured)}.issubset(catalog_ids)
+        widget_ids = {item["id"] for screen in default_screens(configured) for item in screen["widgets"]}
+        assert widget_ids.issubset(catalog_ids)

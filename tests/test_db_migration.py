@@ -136,6 +136,7 @@ def test_ensure_settings_columns_adds_personal_and_opl_columns(monkeypatch):
     expected_new_columns = {
         "display_name",
         "date_of_birth",
+        "height_cm",
         "openpowerlifting_username",
         "opl_best_squat",
         "opl_best_bench",
@@ -143,6 +144,7 @@ def test_ensure_settings_columns_adds_personal_and_opl_columns(monkeypatch):
         "opl_best_total",
         "opl_fetched_at",
         "opl_fetch_error",
+        "dashboard_rotation_seconds",
     }
     assert expected_new_columns.issubset(after)
 

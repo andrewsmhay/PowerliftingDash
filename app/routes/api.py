@@ -65,34 +65,66 @@ def get_dashboard_layout():
     raw = settings.get("dashboard_layout")
     if raw:
         try:
-            return {"widgets": json.loads(raw), "is_default": False}
+            layout = json.loads(raw)
+            if isinstance(layout, list):
+                screens = [{"id": "legacy-dashboard", "name": "Dashboard", "widgets": layout}]
+            elif isinstance(layout, dict) and isinstance(layout.get("screens"), list):
+                screens = layout["screens"]
+            else:
+                screens = None
+            if screens is not None:
+                return {
+                    "screens": screens,
+                    "is_default": False,
+                    "rotation_seconds": settings.get("dashboard_rotation_seconds") or 30,
+                }
         except (TypeError, ValueError):
             pass
-    return {"widgets": widget_catalog.default_layout(configured), "is_default": True}
+    return {
+        "screens": widget_catalog.default_screens(configured),
+        "is_default": True,
+        "rotation_seconds": settings.get("dashboard_rotation_seconds") or 30,
+    }
 
 
 @router.post("/dashboard/layout")
 def save_dashboard_layout(payload: dict):
-    """Stores valid widget positions while preserving valid gated widget ids."""
-    items = payload.get("widgets")
-    if not isinstance(items, list):
-        raise HTTPException(status_code=400, detail="widgets must be a list")
+    """Stores valid screen layouts while preserving valid gated widget ids."""
+    screens = payload.get("screens")
+    if not isinstance(screens, list) or not screens:
+        raise HTTPException(status_code=400, detail="screens must be a non-empty list")
     catalog_ids = {widget["id"] for widget in widget_catalog.WIDGET_CATALOG}
-    cleaned = []
-    for item in items:
-        if not isinstance(item, dict) or item.get("id") not in catalog_ids:
+    cleaned_screens = []
+    for position, screen in enumerate(screens, start=1):
+        if not isinstance(screen, dict):
             continue
-        try:
-            cleaned.append({
-                "id": item["id"],
-                "x": int(item["x"]),
-                "y": int(item["y"]),
-                "w": int(item["w"]),
-                "h": int(item["h"]),
-            })
-        except (KeyError, TypeError, ValueError):
+        screen_id = screen.get("id")
+        if not isinstance(screen_id, str) or not screen_id.strip():
             continue
-    db.update_settings(dashboard_layout=json.dumps(cleaned))
+        name = screen.get("name")
+        name = name.strip() if isinstance(name, str) else ""
+        cleaned_widgets = []
+        for item in screen.get("widgets", []):
+            if not isinstance(item, dict) or item.get("id") not in catalog_ids:
+                continue
+            try:
+                cleaned_widgets.append({
+                    "id": item["id"],
+                    "x": int(item["x"]),
+                    "y": int(item["y"]),
+                    "w": int(item["w"]),
+                    "h": int(item["h"]),
+                })
+            except (KeyError, TypeError, ValueError):
+                continue
+        cleaned_screens.append({
+            "id": screen_id.strip(),
+            "name": name or f"Screen {position}",
+            "widgets": cleaned_widgets,
+        })
+    if not cleaned_screens:
+        raise HTTPException(status_code=400, detail="screens must include a valid screen")
+    db.update_settings(dashboard_layout=json.dumps({"screens": cleaned_screens}))
     return {"ok": True}
 
 
@@ -139,12 +171,14 @@ def save_settings(payload: dict):
     allowed = {
         "timezone", "display_name", "date_of_birth", "openpowerlifting_username",
         "google_health_client_id", "google_health_client_secret",
-        "google_health_enabled_categories", "lifter_sex",
+        "google_health_enabled_categories", "lifter_sex", "height_cm",
+        "dashboard_rotation_seconds",
     }
     clearable = {
         "display_name", "date_of_birth", "openpowerlifting_username",
         "google_health_client_id", "google_health_client_secret",
-        "google_health_enabled_categories", "lifter_sex",
+        "google_health_enabled_categories", "lifter_sex", "height_cm",
+        "dashboard_rotation_seconds",
     }
 
     fields = {}
@@ -175,6 +209,30 @@ def save_settings(payload: dict):
 
     if "lifter_sex" in fields and fields["lifter_sex"] not in {"male", "female", None}:
         raise HTTPException(status_code=400, detail="Sex must be male or female.")
+
+    if "height_cm" in fields and fields["height_cm"] is not None:
+        try:
+            fields["height_cm"] = float(fields["height_cm"])
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(
+                status_code=400, detail="Height must be a positive number of centimetres."
+            ) from exc
+        if not 0 < fields["height_cm"] <= 300:
+            raise HTTPException(
+                status_code=400, detail="Height must be a positive number of centimetres."
+            )
+
+    if "dashboard_rotation_seconds" in fields and fields["dashboard_rotation_seconds"] is not None:
+        try:
+            fields["dashboard_rotation_seconds"] = int(fields["dashboard_rotation_seconds"])
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(
+                status_code=400, detail="Rotation interval must be at least 5 seconds."
+            ) from exc
+        if fields["dashboard_rotation_seconds"] < 5:
+            raise HTTPException(
+                status_code=400, detail="Rotation interval must be at least 5 seconds."
+            )
 
     if not fields:
         raise HTTPException(status_code=400, detail="No recognised settings fields provided")

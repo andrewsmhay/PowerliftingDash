@@ -97,6 +97,7 @@ def _ensure_settings_columns() -> None:
     settings_columns = [
         ("display_name", "TEXT"),
         ("date_of_birth", "TEXT"),
+        ("height_cm", "REAL"),
         ("openpowerlifting_username", "TEXT"),
         ("opl_best_squat", "REAL"),
         ("opl_best_bench", "REAL"),
@@ -116,6 +117,7 @@ def _ensure_settings_columns() -> None:
         ("google_health_height_cm", "REAL"),
         ("google_health_enabled_categories", "TEXT"),
         ("dashboard_layout", "TEXT"),
+        ("dashboard_rotation_seconds", "INTEGER DEFAULT 30"),
         ("lifter_sex", "TEXT"),
     ]
     with connection() as conn:

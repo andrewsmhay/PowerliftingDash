@@ -64,6 +64,31 @@ def test_save_settings_rejects_bad_date_of_birth(monkeypatch):
     assert resp.status_code == 400
 
 
+def test_save_settings_validates_manual_height(monkeypatch):
+    client, _api = make_client(monkeypatch)
+
+    valid = client.post("/api/settings", json={"height_cm": "182.5"})
+    assert valid.status_code == 200
+
+    from app import db
+
+    assert db.get_settings()["height_cm"] == 182.5
+    assert client.post("/api/settings", json={"height_cm": "tall"}).status_code == 400
+    assert client.post("/api/settings", json={"height_cm": "0"}).status_code == 400
+    assert client.post("/api/settings", json={"height_cm": "301"}).status_code == 400
+
+
+def test_save_settings_rejects_fast_dashboard_rotation(monkeypatch):
+    client, _api = make_client(monkeypatch)
+
+    assert client.post("/api/settings", json={"dashboard_rotation_seconds": "4"}).status_code == 400
+    assert client.post("/api/settings", json={"dashboard_rotation_seconds": "5"}).status_code == 200
+
+    from app import db
+
+    assert db.get_settings()["dashboard_rotation_seconds"] == 5
+
+
 def test_save_settings_triggers_opl_fetch_on_new_username(monkeypatch):
     client, api = make_client(monkeypatch)
     calls = []

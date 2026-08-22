@@ -314,8 +314,12 @@
   function defaultWidgetSize(widget) {
     const isChart = ["chart", "pr_timeline_chart", "activity_trend_chart"].includes(widget.kind);
     if (isChart) return { w: widget.kind === "pr_timeline_chart" ? 4 : 6, h: 8 };
-    if (widget.kind === "lift_card") return { w: 3, h: 5 };
+    if (widget.kind === "lift_card") return { w: 3, h: 6 };
     return { w: 3, h: 4 };
+  }
+
+  function activeScreen() {
+    return screens[activeScreenIndex];
   }
 
   function addWidget(item) {
@@ -327,25 +331,46 @@
       h: item.h,
       content: "",
     });
-    renderWidgetElement(element);
-    currentWidgetIds = grid.getGridItems().map((gridItem) => gridItem.gridstackNode.id);
     return element;
   }
 
-  function rebuildGrid(layout) {
+  function rebuildGrid() {
+    const screen = activeScreen();
+    if (!screen) return;
     destroyCharts();
     grid.removeAll(true);
-    skippedLayoutItems = [];
+    screen.skipped = [];
+    skippedLayoutItems = screen.skipped;
     const allowedIds = new Set(catalog.map((widget) => widget.id));
-    layout.forEach((item) => {
+    screen.widgets.forEach((item) => {
       if (allowedIds.has(item.id)) addWidget(item);
       else skippedLayoutItems.push({ id: item.id, x: item.x, y: item.y, w: item.w, h: item.h });
     });
-    currentWidgetIds = grid.getGridItems().map((element) => element.gridstackNode.id);
+    renderAllWidgetContents();
     if (editing) {
       addRemoveControls();
       populateTray();
     }
+  }
+
+  function liveScreenWidgets() {
+    const positions = grid.save(false, false).map((item) => ({
+      id: item.id, x: item.x, y: item.y, w: item.w, h: item.h,
+    }));
+    const ids = new Set(positions.map((item) => item.id));
+    skippedLayoutItems.forEach((item) => {
+      if (!ids.has(item.id)) positions.push(item);
+    });
+    return positions;
+  }
+
+  function storeActiveScreen() {
+    const screen = activeScreen();
+    if (!screen || !grid) return;
+    screen.widgets = liveScreenWidgets();
+    const visibleIds = new Set(grid.getGridItems().map((item) => item.gridstackNode.id));
+    screen.skipped = screen.widgets.filter((item) => !visibleIds.has(item.id));
+    skippedLayoutItems = screen.skipped;
   }
 
   function addRemoveControl(element) {
@@ -386,7 +411,7 @@
       return groups;
     }, {});
     if (!available.length) {
-      tray.innerHTML = '<div class="widget-tray-empty">Every available widget is already on the dashboard.</div>';
+      tray.innerHTML = '<div class="widget-tray-empty">Every available widget is already on this screen.</div>';
       return;
     }
     tray.innerHTML = Object.entries(byCategory).map(([category, widgets]) =>
@@ -401,9 +426,104 @@
         if (!widget) return;
         const size = defaultWidgetSize(widget);
         addWidget({ id: widget.id, w: size.w, h: size.h });
+        renderAllWidgetContents();
         populateTray();
       });
     });
+  }
+
+  function startRotationTimer() {
+    stopRotationTimer();
+    if (editing || screens.length < 2) return;
+    rotationTimer = window.setInterval(() => {
+      goToScreen((activeScreenIndex + 1) % screens.length);
+    }, Math.max(rotationSeconds, 5) * 1000);
+  }
+
+  function stopRotationTimer() {
+    if (rotationTimer) window.clearInterval(rotationTimer);
+    rotationTimer = null;
+  }
+
+  function goToScreen(index) {
+    if (!screens.length) return;
+    const nextIndex = ((index % screens.length) + screens.length) % screens.length;
+    if (editing) storeActiveScreen();
+    activeScreenIndex = nextIndex;
+    rebuildGrid();
+    renderScreenTabs();
+    startRotationTimer();
+  }
+
+  function uniqueScreenId() {
+    const existing = new Set(screens.map((screen) => screen.id));
+    let suffix = screens.length + 1;
+    let screenId = "screen-" + suffix;
+    while (existing.has(screenId)) {
+      suffix += 1;
+      screenId = "screen-" + suffix;
+    }
+    return screenId;
+  }
+
+  function addScreen() {
+    storeActiveScreen();
+    screens.push({ id: uniqueScreenId(), name: "New screen", widgets: [], skipped: [] });
+    goToScreen(screens.length - 1);
+  }
+
+  function removeScreen(index) {
+    if (screens.length <= 1) return;
+    storeActiveScreen();
+    screens.splice(index, 1);
+    if (index < activeScreenIndex) activeScreenIndex -= 1;
+    if (activeScreenIndex >= screens.length) activeScreenIndex = screens.length - 1;
+    rebuildGrid();
+    renderScreenTabs();
+  }
+
+  function renderScreenTabs() {
+    const tabs = document.getElementById("screen-tabs");
+    tabs.innerHTML = "";
+    screens.forEach((screen, index) => {
+      const tab = document.createElement(editing ? "div" : "button");
+      tab.className = "screen-tab" + (index === activeScreenIndex ? " active" : "");
+      if (!editing) {
+        tab.type = "button";
+        tab.textContent = screen.name;
+        tab.addEventListener("click", () => goToScreen(index));
+      } else {
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "screen-name-input";
+        input.value = screen.name;
+        input.setAttribute("aria-label", "Screen name");
+        input.addEventListener("input", () => {
+          screen.name = input.value;
+        });
+        input.addEventListener("focus", () => {
+          if (index !== activeScreenIndex) goToScreen(index);
+        });
+        tab.appendChild(input);
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "screen-remove";
+        remove.setAttribute("aria-label", "Remove " + screen.name);
+        remove.textContent = "×";
+        remove.disabled = screens.length === 1;
+        remove.addEventListener("click", () => removeScreen(index));
+        tab.appendChild(remove);
+      }
+      tabs.appendChild(tab);
+    });
+    if (editing) {
+      const add = document.createElement("button");
+      add.type = "button";
+      add.className = "screen-add";
+      add.textContent = "Add screen";
+      add.addEventListener("click", addScreen);
+      tabs.appendChild(add);
+    }
   }
 
   function setEditing(active) {
@@ -421,17 +541,15 @@
     document.body.classList.toggle("dashboard-editing", active);
     grid.setStatic(!active);
     if (active) {
+      stopRotationTimer();
       addRemoveControls();
       populateTray();
     } else {
       removeRemoveControls();
       tray.innerHTML = "";
+      startRotationTimer();
     }
-    // Showing or hiding the tray and edit-mode controls changes the
-    // available grid width without firing GridStack's own "resizestop"
-    // event, so any live Chart.js canvas would otherwise keep rendering at
-    // its stale pre-toggle size. Resize explicitly once the browser has
-    // applied the new layout.
+    renderScreenTabs();
     requestAnimationFrame(() => {
       Object.values(charts).forEach((chart) => chart.resize());
     });
@@ -466,29 +584,41 @@
       .catch((error) => console.error("Failed to refresh dashboard", error));
   }
 
+  function applyLayoutResponse(result) {
+    screens = result.screens.map((screen) => ({
+      id: screen.id,
+      name: screen.name,
+      widgets: screen.widgets || [],
+      skipped: [],
+    }));
+    activeScreenIndex = 0;
+    rotationSeconds = Number(result.rotation_seconds) || rotationSeconds;
+    rebuildGrid();
+    renderScreenTabs();
+    startRotationTimer();
+  }
+
   function loadSavedLayout() {
     return requestJson("/api/dashboard/layout").then((result) => {
-      savedLayout = result.widgets;
-      rebuildGrid(savedLayout);
+      applyLayoutResponse(result);
       return result;
     });
   }
 
   function saveLayout() {
-    const positions = grid.save(false, false).map((item) => ({
-      id: item.id, x: item.x, y: item.y, w: item.w, h: item.h,
-    }));
-    const ids = new Set(positions.map((item) => item.id));
-    skippedLayoutItems.forEach((item) => {
-      if (!ids.has(item.id)) positions.push(item);
-    });
+    storeActiveScreen();
+    const payload = {
+      screens: screens.map((screen) => ({
+        id: screen.id,
+        name: screen.name,
+        widgets: screen.widgets,
+      })),
+    };
     return requestJson("/api/dashboard/layout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ widgets: positions }),
+      body: JSON.stringify(payload),
     }).then(() => {
-      savedLayout = positions;
-      skippedLayoutItems = positions.filter((item) => !currentWidgetIds.includes(item.id));
       setEditing(false);
     });
   }
@@ -499,13 +629,6 @@
       cellHeight: 50,
       margin: 10,
       float: true,
-      // Intended to keep the desktop top-to-bottom reading order when
-      // collapsing to a single column, rather than GridStack's default
-      // ("moveScale") behaviour. Known limitation: on the current vendored
-      // GridStack build this did not change the observed single-column
-      // order in testing, so primary lift cards can still appear lower on
-      // narrow screens than on desktop. Left in place as documented intent
-      // pending a proper fix.
       columnOpts: { breakpoints: [{ w: 700, c: 1, layout: "list" }] },
     }, "#dashboard-grid");
     grid.setStatic(true);
@@ -536,12 +659,16 @@
       requestJson("/api/dashboard"),
     ]).then(([catalogResponse, layoutResponse, data]) => {
       catalog = catalogResponse.widgets;
-      savedLayout = layoutResponse.widgets;
       dashboardData = data;
       updateChrome(data);
-      rebuildGrid(savedLayout);
+      applyLayoutResponse(layoutResponse);
     }).catch((error) => console.error("Could not load dashboard", error));
   }
+
+  let screens = [];
+  let activeScreenIndex = 0;
+  let rotationSeconds = (window.DASHBOARD_CONFIG && window.DASHBOARD_CONFIG.rotationSeconds) || 30;
+  let rotationTimer = null;
 
   initialise();
   const pollSeconds = (window.DASHBOARD_CONFIG && window.DASHBOARD_CONFIG.pollSeconds) || 60;
