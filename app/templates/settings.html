@@ -65,6 +65,50 @@
         </div>
     </div>
 
+
+    <div class="section-label" style="margin-top:34px;">Google Health</div>
+    {% if google_health_message %}
+    <div class="info-box" style="margin-bottom:14px;">{{ google_health_message }}</div>
+    {% endif %}
+    <div class="info-box">
+        {% if not settings.google_health_client_id or not settings.google_health_client_secret %}
+        <form id="google-health-setup-form">
+            <div class="field-group">
+                <label for="google_health_client_id">Client ID</label>
+                <input type="text" id="google_health_client_id" placeholder="Google OAuth client ID">
+            </div>
+            <div class="field-group">
+                <label for="google_health_client_secret">Client Secret</label>
+                <input type="password" id="google_health_client_secret" placeholder="Google OAuth client secret">
+            </div>
+            <button type="submit" class="btn">Save and connect</button>
+        </form>
+        {% elif not settings.google_health_refresh_token %}
+        <p>Google Health credentials are saved. Connect your account to enable manual and request-triggered synchronisation.</p>
+        <a class="btn" href="/google-health/connect">Connect Google Health</a>
+        {% else %}
+        <p><strong style="color:var(--success);">Connected</strong> to Google Health.</p>
+        {% if settings.google_health_last_sync_error %}
+        <p style="color:var(--error);">Last sync failed: {{ settings.google_health_last_sync_error }}</p>
+        {% elif settings.google_health_last_sync_at %}
+        <p>Last synced: <span id="google-health-last-synced" data-timestamp="{{ settings.google_health_last_sync_at }}">{{ settings.google_health_last_sync_at }}</span>.</p>
+        {% endif %}
+        <form id="google-health-categories-form">
+            <label class="checkbox-row"><input type="checkbox" name="google_health_category" value="body_composition"> Body composition</label>
+            <label class="checkbox-row"><input type="checkbox" name="google_health_category" value="activity"> Activity &amp; steps</label>
+            <label class="checkbox-row"><input type="checkbox" name="google_health_category" value="cardio"> Heart &amp; cardio</label>
+            <label class="checkbox-row"><input type="checkbox" name="google_health_category" value="sleep"> Sleep &amp; recovery</label>
+            <input type="hidden" id="google-health-enabled-categories" value='{{ enabled_categories }}'>
+            <div style="margin-top:10px;"><button type="submit" class="btn secondary">Save categories</button></div>
+        </form>
+        <div style="margin-top:10px;">
+            <button type="button" class="btn secondary" id="sync-google-health-btn">Sync now</button>
+            <button type="button" class="btn danger" id="disconnect-google-health-btn">Disconnect</button>
+        </div>
+        {% endif %}
+        <p class="hint" style="margin-top:12px;">Weight and body composition only fill in dates with no existing manual entry, so smart-scale readings are never overwritten. BMR is not yet available from Google Health and must stay a manual entry.</p>
+    </div>
+
     <div class="section-label" style="margin-top:34px;">Data</div>
     <div class="info-box">
         Entries stored: <strong>{{ entry_count }}</strong>

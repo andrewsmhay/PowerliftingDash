@@ -16,6 +16,7 @@ def dashboard(request: Request):
     settings = db.get_settings()
     payload = metrics.build_dashboard_payload(latest, history, app_config, settings)
     payload["entry_count"] = db.count_entries()
+    payload["latest_health_metric"] = db.get_latest_health_metric()
     return request.app.state.templates.TemplateResponse(
         "dashboard.html",
         {
@@ -30,6 +31,7 @@ def dashboard(request: Request):
 @router.get("/settings", response_class=HTMLResponse)
 def settings_page(request: Request):
     settings = db.get_settings()
+    enabled_categories = settings.get("google_health_enabled_categories") or '["body_composition", "activity", "cardio", "sleep"]'
     date_of_birth_display = None
     if settings.get("date_of_birth"):
         date_of_birth_display = to_ddmmyyyy(settings["date_of_birth"])
@@ -40,5 +42,7 @@ def settings_page(request: Request):
             "settings": settings,
             "date_of_birth_display": date_of_birth_display,
             "entry_count": db.count_entries(),
+            "enabled_categories": enabled_categories,
+            "google_health_message": request.query_params.get("google_health_message"),
         },
     )

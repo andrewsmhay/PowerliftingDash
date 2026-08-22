@@ -12,9 +12,11 @@ run full screen on a monitor (kiosk-style).
 - **Frontend:** server-rendered dark dashboard, vanilla JS + a locally
   vendored copy of Chart.js (no CDN calls at runtime, so it works offline
   once built).
-- **Data entry:** the **New entry** page (`/entries/new`) built into the
-  app itself is the only way numbers get in - there is no external sync.
-  You type today's numbers into a web form; everything derivable
+- **Data entry and Google Health:** the **New entry** page (`/entries/new`)
+  is the primary place for powerlifting and smart-scale readings. An optional
+  Google Health connection can synchronise selected activity, cardio, sleep,
+  weight and body-fat measurements without overwriting manual entries.
+  Everything derivable
   (remaining, competition deltas, totals, "to date" figures) is calculated
   automatically and never typed in by hand. Past entries can be corrected
   or removed on the **Manage entries** page (`/entries`).
@@ -193,11 +195,11 @@ your public profile on [openpowerlifting.org](https://www.openpowerlifting.org/)
 
 Notes and failure modes:
 
-- This is the **only** place PowerliftingDash makes an outbound network
-  call. It's an explicit, on-demand `GET` against a public profile page,
-  triggered only by a Settings save or a Refresh click - there is no
-  background job, no scheduled polling, and no other external data source
-  anywhere in the app.
+- OpenPowerlifting is one of two optional outbound integrations. Its request
+  is an explicit, on-demand `GET` against a public profile page, triggered
+  only by a Settings save or a Refresh click. Google Health also runs only
+  inline with a Settings, sync, or eligible dashboard request. Neither uses a
+  background job or scheduled polling.
 - openpowerlifting.org has no public JSON API for a single lifter, so
   `app/openpowerlifting.py` parses the small best-lifts table at the top
   of the profile page with the standard library's `html.parser` (no
@@ -215,13 +217,48 @@ Notes and failure modes:
   figure in the app, and prefer the "Raw" equipment row when a lifter has
   results in more than one equipment category.
 
+## Google Health integration
+
+PowerliftingDash can connect to the Google Health API for four optional data
+categories: body composition, activity and steps, heart and cardio, and sleep
+and recovery. Connection and synchronisation happen only following an explicit
+Settings action, a manual **Sync now** click, or a dashboard request after the
+configured refresh interval. There is no background worker or scheduled
+polling.
+
+### Setup
+
+1. In Google Cloud, create an OAuth 2.0 web application client and add this
+   redirect URI: `<PLD_PUBLIC_BASE_URL>/google-health/oauth/callback`.
+2. In `/settings`, enter the client ID and client secret, then choose **Save
+   and connect**. The secret is stored in the local SQLite database and is
+   never returned by the settings API.
+3. During personal use, leave the OAuth consent screen in **Testing** and add
+   your own Google account as a test user. The three Google Health scopes are
+   Restricted, but a single personal test user does not need a security review.
+4. Approve the requested read-only scopes. The callback performs the first
+   historical synchronisation, which defaults to 730 days, then future syncs
+   are incremental.
+
+The integration stores daily activity, cardio and sleep information in a
+separate `health_metrics` table. Weight and body-fat samples only fill a field
+that is blank on an `entries` row, so a manual reading is never replaced.
+Height is saved as the latest informational Google Health value. Google Health
+does not currently supply BMR, so BMR remains a manual smart-scale entry.
+
+`PLD_PUBLIC_BASE_URL` defaults to `http://localhost:<PLD_PORT>`, which suits
+local OAuth development. A public deployment should set it to the real HTTPS
+address. `PLD_GOOGLE_HEALTH_SYNC_INTERVAL_SECONDS` defaults to 3600 and limits
+request-triggered dashboard refreshes.
+
 ## Running it
 
 PowerliftingDash runs the same code either as a Docker container or as a
 native systemd service on a plain Linux host - pick whichever suits where
 you're putting the monitor. Both modes read the same environment
 variables (`PLD_DATA_DIR`, `PLD_DB_FILENAME`, `PLD_HOST`, `PLD_PORT`,
-`PLD_DASHBOARD_POLL_SECONDS`) through the same `python3 -m app` entry
+`PLD_DASHBOARD_POLL_SECONDS`, `PLD_PUBLIC_BASE_URL`, and
+`PLD_GOOGLE_HEALTH_SYNC_INTERVAL_SECONDS`) through the same `python3 -m app` entry
 point (`app/__main__.py`), so there's no behavioural difference between
 the two beyond how the process is supervised.
 
@@ -348,6 +385,7 @@ app/
   date_utils.py      Explicit dd/mm/yyyy date parsing
   formatting.py      Dashboard title formatting (possessive display name)
   openpowerlifting.py Fetches personal bests from openpowerlifting.org
+  google_health.py   OAuth and data normalisation for Google Health
   metrics.py         Raw entry row + config -> dashboard card/chart payload
   routes/            Page routes (dashboard, entries, targets, settings) and JSON API
   templates/         Jinja2 templates (dashboard, entry_form, entries_list, targets, settings)
@@ -356,7 +394,7 @@ app/
 schema/
   v1_items.csv        Source-of-truth data dictionary
   generate_schema.py   Regenerates the schema from the CSV above; splits entries vs app_settings
-tests/                 pytest unit tests (date parsing, DB, derive, entries route, targets route)
+tests/                 pytest unit tests, including Google Health client, migration, and route coverage
 deploy/
   install.sh                        Installs/updates PowerliftingDash as a native systemd service
   uninstall.sh                      Removes the native install
@@ -376,12 +414,12 @@ python3 -m pytest tests/ -v
 
 ## Notes and assumptions
 
-- **Manual entry is the only workflow for daily readings.** The
-  `/entries/new` web form is the sole place dated numbers get logged; there
-  is no background job or scheduled sync of any kind. The one exception is
-  the OpenPowerlifting personal-best lookup described above, which is an
-  explicit, on-demand fetch triggered only by a Settings save or Refresh
-  click - see "OpenPowerlifting personal bests".
+- **Manual entry remains authoritative for daily readings.** The
+  `/entries/new` web form is the source for powerlifting and smart-scale
+  values. Google Health may only gap-fill weight and body-fat fields, and
+  keeps activity, cardio and sleep measurements in `health_metrics`. Both
+  Google Health and OpenPowerlifting work only during a user-triggered request;
+  there is no background job or scheduled sync process.
 - The v1 tab's "Configured in Settings as Manual Input?" column drives
   which columns appear on the `/entries/new` form (`configured_in_settings`
   in `schema_manifest.json`). The "Read from New Date Entry?" column

@@ -311,7 +311,7 @@ body {
   color: var(--text-muted);
   margin-bottom: 22px;
 }
-.danger-zone .checkbox-row {
+.checkbox-row {
   display: flex;
   align-items: flex-start;
   gap: 8px;
@@ -320,7 +320,7 @@ body {
   color: var(--text);
   cursor: pointer;
 }
-.danger-zone .checkbox-row input { margin-top: 3px; }
+.checkbox-row input { margin-top: 3px; }
 
 .table-wrap { overflow-x: auto; margin-top: 10px; border: 1px solid var(--border); border-radius: 10px; }
 .entries-table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: nowrap; }

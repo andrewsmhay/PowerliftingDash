@@ -52,6 +52,7 @@ def init_db() -> None:
         conn.executescript(sql)
     _ensure_config_columns()
     _ensure_settings_columns()
+    _ensure_health_metrics_table()
     _backfill_config_from_latest_entry()
 
 
@@ -103,6 +104,17 @@ def _ensure_settings_columns() -> None:
         ("opl_best_total", "REAL"),
         ("opl_fetched_at", "TEXT"),
         ("opl_fetch_error", "TEXT"),
+        ("google_health_client_id", "TEXT"),
+        ("google_health_client_secret", "TEXT"),
+        ("google_health_access_token", "TEXT"),
+        ("google_health_refresh_token", "TEXT"),
+        ("google_health_token_expiry", "TEXT"),
+        ("google_health_connected_at", "TEXT"),
+        ("google_health_last_sync_at", "TEXT"),
+        ("google_health_last_sync_error", "TEXT"),
+        ("google_health_history_days", "INTEGER DEFAULT 730"),
+        ("google_health_height_cm", "REAL"),
+        ("google_health_enabled_categories", "TEXT"),
     ]
     with connection() as conn:
         existing = {
@@ -111,6 +123,35 @@ def _ensure_settings_columns() -> None:
         for column, sql_type in settings_columns:
             if column not in existing:
                 conn.execute(f"ALTER TABLE app_settings ADD COLUMN {column} {sql_type}")
+
+
+def _ensure_health_metrics_table() -> None:
+    """Creates the separate daily health table without routing activity and
+    recovery measurements through the goals and status manifest.
+    """
+    with connection() as conn:
+        conn.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS health_metrics (
+                entry_date TEXT PRIMARY KEY,
+                steps INTEGER,
+                distance_km REAL,
+                floors_climbed REAL,
+                active_minutes REAL,
+                active_zone_minutes REAL,
+                calories_burned REAL,
+                resting_heart_rate REAL,
+                heart_rate_variability_ms REAL,
+                vo2_max REAL,
+                sleep_minutes REAL,
+                respiratory_rate REAL,
+                oxygen_saturation_pct REAL,
+                source TEXT NOT NULL DEFAULT 'google_health',
+                synced_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_health_metrics_date ON health_metrics(entry_date);
+            """
+        )
 
 
 def _backfill_config_from_latest_entry() -> None:
@@ -268,6 +309,97 @@ def upsert_entry(
                 ],
             )
         return entry_id
+
+
+def gap_fill_entry_fields(entry_date_iso: str, values: dict, source_label: str) -> str:
+    """Adds Health values only where a dated entry currently has no value.
+
+    A manual reading remains authoritative. Existing rows also keep their
+    source and timestamp, because filling an empty field is not a manual edit.
+    """
+    import uuid
+
+    allowed = {"body_weight_mass", "percent_body_fat", "body_fat_mass"}
+    supplied = {key: value for key, value in values.items() if key in allowed and value is not None}
+    now = datetime.now(timezone.utc).isoformat()
+    with connection() as conn:
+        existing = conn.execute(
+            "SELECT * FROM entries WHERE entry_date = ?", (entry_date_iso,)
+        ).fetchone()
+        if not existing:
+            entry_id = str(uuid.uuid4())
+            safe_values = {column: None for column in entry_columns()}
+            safe_values.update(supplied)
+            weight = safe_values.get("body_weight_mass")
+            percentage = safe_values.get("percent_body_fat")
+            if safe_values.get("body_fat_mass") is None and weight is not None and percentage is not None:
+                safe_values["body_fat_mass"] = weight * percentage / 100
+            columns = entry_columns()
+            conn.execute(
+                f"INSERT INTO entries (id, entry_date, source, source_row_number, created_at, updated_at, "
+                f"{', '.join(columns)}) VALUES (?, ?, ?, NULL, ?, ?, {', '.join('?' for _ in columns)})",
+                [entry_id, entry_date_iso, source_label, now, now, *[safe_values[column] for column in columns]],
+            )
+            return entry_id
+
+        entry_id = existing["id"]
+        to_fill = {key: value for key, value in supplied.items() if existing.get(key) is None}
+        final_weight = to_fill.get("body_weight_mass", existing.get("body_weight_mass"))
+        final_percentage = to_fill.get("percent_body_fat", existing.get("percent_body_fat"))
+        if (
+            existing.get("body_fat_mass") is None
+            and final_weight is not None
+            and final_percentage is not None
+        ):
+            to_fill.setdefault("body_fat_mass", final_weight * final_percentage / 100)
+        if to_fill:
+            set_clause = ", ".join(f"{column} = ?" for column in to_fill)
+            conn.execute(
+                f"UPDATE entries SET {set_clause} WHERE id = ?",
+                [*to_fill.values(), entry_id],
+            )
+        return entry_id
+
+
+def upsert_health_metric(entry_date_iso: str, values: dict) -> None:
+    """Stores a partial Google Health daily summary, replacing only metrics
+    returned by the requested categories while retaining other categories.
+    """
+    valid = {
+        "steps", "distance_km", "floors_climbed", "active_minutes",
+        "active_zone_minutes", "calories_burned", "resting_heart_rate",
+        "heart_rate_variability_ms", "vo2_max", "sleep_minutes",
+        "respiratory_rate", "oxygen_saturation_pct",
+    }
+    supplied = {key: value for key, value in values.items() if key in valid and value is not None}
+    if not supplied:
+        return
+    synced_at = datetime.now(timezone.utc).isoformat()
+    with connection() as conn:
+        existing = conn.execute(
+            "SELECT entry_date FROM health_metrics WHERE entry_date = ?", (entry_date_iso,)
+        ).fetchone()
+        if existing:
+            set_clause = ", ".join(f"{column} = ?" for column in supplied)
+            conn.execute(
+                f"UPDATE health_metrics SET {set_clause}, source = 'google_health', synced_at = ? "
+                "WHERE entry_date = ?",
+                [*supplied.values(), synced_at, entry_date_iso],
+            )
+        else:
+            columns = list(supplied)
+            conn.execute(
+                f"INSERT INTO health_metrics (entry_date, {', '.join(columns)}, source, synced_at) "
+                f"VALUES (?, {', '.join('?' for _ in columns)}, 'google_health', ?)",
+                [entry_date_iso, *supplied.values(), synced_at],
+            )
+
+
+def get_latest_health_metric() -> dict | None:
+    with connection() as conn:
+        return conn.execute(
+            "SELECT * FROM health_metrics ORDER BY entry_date DESC LIMIT 1"
+        ).fetchone()
 
 
 def update_computed_columns(entry_id: str, values: dict) -> None:

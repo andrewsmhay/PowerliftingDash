@@ -163,3 +163,19 @@ def test_ensure_settings_columns_preserves_existing_values(monkeypatch):
     settings = db.get_settings()
     assert settings["display_name"] == "Andrew"
     assert settings["openpowerlifting_username"] == "andrewhay"
+
+
+def test_init_db_adds_google_health_columns_and_table(monkeypatch):
+    db = _make_legacy_db(monkeypatch)
+    db.init_db()
+
+    with db.connection() as conn:
+        setting_columns = {row["name"] for row in conn.execute("PRAGMA table_info(app_settings)").fetchall()}
+        metric_columns = {row["name"] for row in conn.execute("PRAGMA table_info(health_metrics)").fetchall()}
+    assert {
+        "google_health_client_id", "google_health_client_secret", "google_health_access_token",
+        "google_health_refresh_token", "google_health_token_expiry", "google_health_connected_at",
+        "google_health_last_sync_at", "google_health_last_sync_error", "google_health_history_days",
+        "google_health_height_cm", "google_health_enabled_categories",
+    }.issubset(setting_columns)
+    assert {"entry_date", "steps", "sleep_minutes", "synced_at"}.issubset(metric_columns)

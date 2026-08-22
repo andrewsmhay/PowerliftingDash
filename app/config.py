@@ -24,3 +24,13 @@ PORT = int(os.environ.get("PLD_PORT", "8080"))
 
 # How often the dashboard page itself polls the API for fresh data (seconds).
 DASHBOARD_POLL_SECONDS = int(os.environ.get("PLD_DASHBOARD_POLL_SECONDS", "60"))
+
+# Google sends OAuth callbacks to this public address. Local development can
+# use the default HTTP address, while public deployments should configure HTTPS.
+PUBLIC_BASE_URL = os.environ.get("PLD_PUBLIC_BASE_URL", f"http://localhost:{PORT}").rstrip("/")
+
+# Health API work remains request-triggered. This only limits how often a
+# dashboard request may refresh data that has already been connected.
+GOOGLE_HEALTH_SYNC_INTERVAL_SECONDS = int(
+    os.environ.get("PLD_GOOGLE_HEALTH_SYNC_INTERVAL_SECONDS", "3600")
+)

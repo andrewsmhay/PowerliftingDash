@@ -76,6 +76,21 @@
     );
   }
 
+  function healthCardsHtml(metric) {
+    const cards = [
+      { label: "Steps", value: metric && metric.steps, unit: "" },
+      { label: "Resting heart rate", value: metric && metric.resting_heart_rate, unit: " bpm" },
+      { label: "Sleep", value: metric && metric.sleep_minutes === null ? null : metric && metric.sleep_minutes / 60, unit: " hrs", decimals: 1 },
+    ];
+    return cards.map((card) => (
+      '<div class="card">' +
+      '<div class="card-label">' + card.label + "</div>" +
+      '<div class="card-value">' + valueHtml(card.value, card.unit, card.decimals) + "</div>" +
+      '<div class="card-meta"><span>Latest Google Health sync</span></div>' +
+      "</div>"
+    )).join("");
+  }
+
   function renderEntryCount(count) {
     const badge = document.getElementById("entry-count-badge");
     if (count === null || count === undefined) {
@@ -162,6 +177,9 @@
 
     const bodyCardsEl = document.getElementById("body-cards");
     bodyCardsEl.innerHTML = data.body_cards.map(bodyCardHtml).join("") + data.index_cards.map(indexCardHtml).join("");
+
+    const healthCardsEl = document.getElementById("health-cards");
+    if (healthCardsEl) healthCardsEl.innerHTML = healthCardsHtml(data.latest_health_metric);
 
     document.getElementById("latest-entry-date").textContent = data.latest_entry_date
       ? "Latest entry: " + data.latest_entry_date

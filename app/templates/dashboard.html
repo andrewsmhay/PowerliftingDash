@@ -29,6 +29,11 @@
 <div class="section-label">Body Composition</div>
 <div class="card-grid" id="body-cards"></div>
 
+{% if data.latest_health_metric %}
+<div class="section-label">Activity &amp; Recovery</div>
+<div class="card-grid" id="health-cards"></div>
+{% endif %}
+
 <div class="section-label">Trends</div>
 <div class="charts-grid">
     <div class="chart-card">

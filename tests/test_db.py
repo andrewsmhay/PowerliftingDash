@@ -85,3 +85,24 @@ def test_manual_save_overwrites_custom_source_for_same_date(monkeypatch):
     latest = db.get_latest_entry()
     assert latest["source"] == "manual"
     assert latest["squat_1rm_current"] == 155.0
+
+
+def test_gap_fill_entry_fields_never_overwrites_existing_values(monkeypatch):
+    db = make_temp_db(monkeypatch)
+    db.upsert_entry("2026-08-01", None, {"body_weight_mass": 80.0})
+
+    db.gap_fill_entry_fields(
+        "2026-08-01",
+        {"body_weight_mass": 82.0, "percent_body_fat": 15.0},
+        "google_health",
+    )
+    existing = db.get_entry_by_date("2026-08-01")
+    assert existing["body_weight_mass"] == 80.0
+    assert existing["percent_body_fat"] == 15.0
+    assert existing["body_fat_mass"] == 12.0
+    assert existing["source"] == "manual"
+
+    db.gap_fill_entry_fields("2026-08-02", {"body_weight_mass": 82.0}, "google_health")
+    inserted = db.get_entry_by_date("2026-08-02")
+    assert inserted["body_weight_mass"] == 82.0
+    assert inserted["source"] == "google_health"

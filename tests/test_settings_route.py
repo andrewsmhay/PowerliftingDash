@@ -143,3 +143,34 @@ def test_refresh_endpoint_returns_bests_on_success(monkeypatch):
     resp = client.post("/api/openpowerlifting/refresh")
     assert resp.status_code == 200
     assert resp.json()["bests"]["total"] == 430.0
+
+
+def test_save_settings_accepts_google_health_setup_without_returning_secret(monkeypatch):
+    client, _api = make_client(monkeypatch)
+
+    response = client.post(
+        "/api/settings",
+        json={
+            "google_health_client_id": "client-id",
+            "google_health_client_secret": "very-secret",
+            "google_health_enabled_categories": '["activity", "sleep"]',
+        },
+    )
+    assert response.status_code == 200
+
+    response = client.get("/api/settings")
+    body = response.json()
+    assert body["google_health_client_id"] == "client-id"
+    assert body["google_health_client_secret_set"] is True
+    assert "google_health_client_secret" not in body
+
+
+def test_google_health_sync_route_uses_shared_synchroniser(monkeypatch):
+    client, api = make_client(monkeypatch)
+    from app.routes import google_health as google_health_routes
+
+    monkeypatch.setattr(google_health_routes, "synchronise_google_health", lambda: {"ok": True, "metrics_dates": 2})
+    response = client.post("/api/google-health/sync")
+    assert response.status_code == 200
+    assert response.json()["metrics_dates"] == 2
+    assert api is not None

@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from . import config, db
-from .routes import api, entries, pages, targets
+from .routes import api, entries, google_health, pages, targets
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -16,6 +16,7 @@ app.mount("/static", StaticFiles(directory=str(config.APP_DIR / "static")), name
 
 app.include_router(pages.router)
 app.include_router(api.router)
+app.include_router(google_health.router)
 app.include_router(entries.router)
 app.include_router(targets.router)
 
