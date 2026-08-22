@@ -1,15 +1,13 @@
-"""Turns a raw `entries` row into the grouped structure the dashboard
-templates and JSON API render: lift cards, body composition cards, and
-BMI/BMR cards, each with current/target/competition/remaining values and a
-progress percentage where that makes sense.
+"""Builds the data structures used by dashboard cards and JSON responses."""
+from datetime import datetime, timezone
 
-Current values (and every derived remaining/delta/to-date figure) come from
-the entry row. Target and competition values are hardcoded goals from the
-/targets screen, so they come from a `config` dict (`db.get_config()`)
-instead - the same config snapshot applies regardless of which entry is
-being shown.
-"""
-
+from . import config as runtime_config
+from .analytics import (
+    compute_dots_score,
+    compute_projected_date,
+    compute_rate_of_change,
+    compute_ratio,
+)
 from .formatting import dashboard_title
 
 LIFTS = [
@@ -31,39 +29,23 @@ def _safe(value):
 
 
 def _pct(current, base):
-    """Unclamped percentage of `current` against `base`, one decimal place.
-
-    Distinct from `_progress_pct`, which is clamped 0-100 and drives the
-    progress bar's width only. Attainment percentages shown as text (e.g.
-    "106.7% of last competition") are allowed to run past 100% - clamping
-    them would hide genuine overachievement.
-    """
+    """Returns an unclamped attainment percentage for textual display."""
     if current is None or base is None or base == 0:
         return None
     return round(current / base * 100, 1)
 
 
 def _progress_pct(current, target):
-    """0-100 progress towards target, as a plain current/target ratio.
-
-    Kept deliberately simple and consistent across every card type: the
-    bar always answers "how close to the target am I", while any
-    comparison to a competition lift is shown separately via the
-    competition/competition_delta fields rather than folded into the bar.
-    An earlier version used the competition value as the bar's baseline,
-    which meant a lifter sitting right at their competition number (i.e.
-    no change since the meet) saw an empty bar even when close to target -
-    contradicting the "Remaining" figure shown alongside it.
-    """
+    """Returns a 0 to 100 percentage for the visible progress bar."""
     if current is None or target is None or target == 0:
         return None
-    pct = current / target * 100
-    return max(0, min(100, round(pct, 1)))
+    return max(0, min(100, round(current / target * 100, 1)))
 
 
 def build_lift_cards(
     entry: dict | None, config: dict | None = None, settings: dict | None = None
 ) -> list[dict]:
+    """Returns cards for the three competition lifts."""
     config = config or {}
     settings = settings or {}
     cards = []
@@ -72,40 +54,37 @@ def build_lift_cards(
         current = _safe((entry or {}).get(f"{key}_1rm_current"))
         target = _safe(config.get(f"{key}_1rm_target"))
         competition = _safe(config.get(f"{key}_1rm_competition"))
-        remaining = _safe((entry or {}).get(f"{key}_1rm_remaining"))
-        delta = _safe((entry or {}).get(f"{key}_1rm_competition_delta"))
-        cards.append(
-            {
-                "label": lift["label"],
-                "unit": "kg",
-                "current": current,
-                "target": target,
-                "competition": competition,
-                "remaining": remaining,
-                "competition_delta": delta,
-                "progress_pct": _progress_pct(current, target),
-                "target_attainment_pct": _pct(current, target),
-                "competition_attainment_pct": _pct(current, competition),
-                "personal_best": _safe(settings.get(f"opl_best_{key}")),
-            }
-        )
+        cards.append({
+            "id": f"lift.{key}",
+            "label": lift["label"],
+            "unit": "kg",
+            "current": current,
+            "target": target,
+            "competition": competition,
+            "remaining": _safe((entry or {}).get(f"{key}_1rm_remaining")),
+            "competition_delta": _safe((entry or {}).get(f"{key}_1rm_competition_delta")),
+            "progress_pct": _progress_pct(current, target),
+            "target_attainment_pct": _pct(current, target),
+            "competition_attainment_pct": _pct(current, competition),
+            "personal_best": _safe(settings.get(f"opl_best_{key}")),
+        })
     return cards
 
 
 def build_total_card(entry: dict | None, settings: dict | None = None) -> dict:
+    """Returns the combined total card."""
     entry = entry or {}
     settings = settings or {}
     current = _safe(entry.get("total_weight_lifted_current"))
     target = _safe(entry.get("total_weight_lifted_target"))
-    competition = _safe(entry.get("total_weight_lifted_in_competition"))
-    remaining = _safe(entry.get("total_weight_lifted_remaining"))
     return {
+        "id": "lift.total",
         "label": "Total",
         "unit": "kg",
         "current": current,
         "target": target,
-        "competition": competition,
-        "remaining": remaining,
+        "competition": _safe(entry.get("total_weight_lifted_in_competition")),
+        "remaining": _safe(entry.get("total_weight_lifted_remaining")),
         "progress_pct": _progress_pct(current, target),
         "target_attainment_pct": _pct(current, target),
         "personal_best": _safe(settings.get("opl_best_total")),
@@ -113,6 +92,7 @@ def build_total_card(entry: dict | None, settings: dict | None = None) -> dict:
 
 
 def build_body_cards(entry: dict | None, config: dict | None = None) -> list[dict]:
+    """Returns cards for body composition readings."""
     entry = entry or {}
     config = config or {}
     cards = []
@@ -120,34 +100,34 @@ def build_body_cards(entry: dict | None, config: dict | None = None) -> list[dic
         key = metric["key"]
         current = _safe(entry.get(key))
         target = _safe(config.get(f"{key}_target"))
-        remaining = _safe(entry.get(f"{key}_remaining"))
-        to_date = _safe(entry.get(f"{key}_to_date"))
-        cards.append(
-            {
-                "label": metric["label"],
-                "unit": metric["unit"],
-                "current": current,
-                "target": target,
-                "remaining": remaining,
-                "to_date": to_date,
-                "progress_pct": _progress_pct(current, target),
-            }
-        )
+        cards.append({
+            "id": f"body.{key}",
+            "label": metric["label"],
+            "unit": metric["unit"],
+            "current": current,
+            "target": target,
+            "remaining": _safe(entry.get(f"{key}_remaining")),
+            "to_date": _safe(entry.get(f"{key}_to_date")),
+            "progress_pct": _progress_pct(current, target),
+        })
     return cards
 
 
 def build_index_cards(entry: dict | None, config: dict | None = None) -> list[dict]:
+    """Returns BMI and BMR cards."""
     entry = entry or {}
     config = config or {}
     return [
         {
+            "id": "index.bmi",
             "label": "BMI",
-            "unit": "kg/m\u00b2",
+            "unit": "kg/m²",
             "current": _safe(entry.get("bmi")),
             "target": _safe(config.get("bmi_target")),
             "to_date": _safe(entry.get("bmi_to_date")),
         },
         {
+            "id": "index.bmr",
             "label": "BMR",
             "unit": "kcal",
             "current": _safe(entry.get("bmr")),
@@ -157,37 +137,107 @@ def build_index_cards(entry: dict | None, config: dict | None = None) -> list[di
     ]
 
 
+def _history_payload(history: list[dict]) -> list[dict]:
+    return [
+        {
+            "entry_date": row["entry_date"],
+            "squat": row.get("squat_1rm_current"),
+            "bench": row.get("bench_1rm_current"),
+            "deadlift": row.get("deadlift_1rm_current"),
+            "total": row.get("total_weight_lifted_current"),
+            "body_weight_mass": row.get("body_weight_mass"),
+            "body_fat_mass": row.get("body_fat_mass"),
+            "skeletal_muscle_mass": row.get("skeletal_muscle_mass"),
+            "percent_body_fat": row.get("percent_body_fat"),
+            "bmi": row.get("bmi"),
+            "bmr": row.get("bmr"),
+        }
+        for row in history
+    ]
+
+
+def build_analytics_payload(
+    entry: dict | None,
+    dashboard_config: dict | None,
+    settings: dict | None,
+    history_asc: list[dict],
+    today=None,
+) -> dict:
+    """Builds analytics data from an entry, configured goals, and one history list."""
+    entry = entry or {}
+    dashboard_config = dashboard_config or {}
+    settings = settings or {}
+    today = today or datetime.now(timezone.utc).date()
+    bodyweight = _safe(entry.get("body_weight_mass"))
+    rates = {
+        lift["key"]: compute_rate_of_change(
+            history_asc,
+            lift["key"],
+            runtime_config.RATE_OF_CHANGE_WINDOW_DAYS,
+            today,
+        )
+        for lift in LIFTS
+    }
+    return {
+        "dots_score": compute_dots_score(
+            _safe(entry.get("total_weight_lifted_current")),
+            bodyweight,
+            settings.get("lifter_sex"),
+        ),
+        "ratios": {
+            lift["key"]: compute_ratio(
+                _safe(entry.get(f"{lift['key']}_1rm_current")), bodyweight
+            )
+            for lift in LIFTS
+        },
+        "rate_of_change": rates,
+        "projected_dates": {
+            lift["key"]: compute_projected_date(
+                _safe(entry.get(f"{lift['key']}_1rm_current")),
+                _safe(dashboard_config.get(f"{lift['key']}_1rm_target")),
+                rates[lift["key"]]["kg_per_week"],
+                today,
+            )
+            for lift in LIFTS
+        },
+    }
+
+
 def build_dashboard_payload(
     latest_entry: dict | None,
     history: list[dict],
-    config: dict | None = None,
+    dashboard_config: dict | None = None,
     settings: dict | None = None,
+    health_metrics: list[dict] | None = None,
 ) -> dict:
-    config = config or {}
+    """Returns all dynamic dashboard values without doing database access."""
+    dashboard_config = dashboard_config or {}
     settings = settings or {}
+    history_payload = _history_payload(history)
+    health_metrics = health_metrics or []
+    analytics = build_analytics_payload(
+        latest_entry, dashboard_config, settings, history_payload
+    )
     return {
         "latest_entry_date": (latest_entry or {}).get("entry_date"),
         "lifter_name": settings.get("display_name"),
         "dashboard_title": dashboard_title(settings.get("display_name")),
-        "lift_cards": build_lift_cards(latest_entry, config, settings),
+        "lift_cards": build_lift_cards(latest_entry, dashboard_config, settings),
         "total_card": build_total_card(latest_entry, settings),
         "weight_change_since_comp": _safe((latest_entry or {}).get("weight_change_since_comp")),
-        "body_cards": build_body_cards(latest_entry, config),
-        "index_cards": build_index_cards(latest_entry, config),
-        "history": [
+        "body_cards": build_body_cards(latest_entry, dashboard_config),
+        "index_cards": build_index_cards(latest_entry, dashboard_config),
+        "history": history_payload,
+        "health_history": [
             {
                 "entry_date": row["entry_date"],
-                "squat": row.get("squat_1rm_current"),
-                "bench": row.get("bench_1rm_current"),
-                "deadlift": row.get("deadlift_1rm_current"),
-                "total": row.get("total_weight_lifted_current"),
-                "body_weight_mass": row.get("body_weight_mass"),
-                "body_fat_mass": row.get("body_fat_mass"),
-                "skeletal_muscle_mass": row.get("skeletal_muscle_mass"),
-                "percent_body_fat": row.get("percent_body_fat"),
-                "bmi": row.get("bmi"),
-                "bmr": row.get("bmr"),
+                "resting_heart_rate": row.get("resting_heart_rate"),
+                "heart_rate_variability_ms": row.get("heart_rate_variability_ms"),
+                "sleep_minutes": row.get("sleep_minutes"),
             }
-            for row in history
+            for row in health_metrics
         ],
+        "google_health_configured": bool(settings.get("google_health_client_id"))
+        and bool(settings.get("google_health_client_secret")),
+        **analytics,
     }

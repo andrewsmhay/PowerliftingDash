@@ -115,6 +115,8 @@ def _ensure_settings_columns() -> None:
         ("google_health_history_days", "INTEGER DEFAULT 730"),
         ("google_health_height_cm", "REAL"),
         ("google_health_enabled_categories", "TEXT"),
+        ("dashboard_layout", "TEXT"),
+        ("lifter_sex", "TEXT"),
     ]
     with connection() as conn:
         existing = {
@@ -241,6 +243,15 @@ def get_entries(limit: int = 180) -> list[dict]:
     with connection() as conn:
         rows = conn.execute(
             "SELECT * FROM entries ORDER BY entry_date DESC LIMIT ?", (limit,)
+        ).fetchall()
+    return list(reversed(rows))
+
+
+def get_health_metrics(limit: int = 180) -> list[dict]:
+    """Most recent health metric rows, oldest first for chart x-axis order."""
+    with connection() as conn:
+        rows = conn.execute(
+            "SELECT * FROM health_metrics ORDER BY entry_date DESC LIMIT ?", (limit,)
         ).fetchall()
     return list(reversed(rows))
 

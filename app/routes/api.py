@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 
 from .. import config, db, metrics
+from .. import widgets as widget_catalog
 from ..date_utils import DateParseError, parse_entry_date, to_iso
 from ..openpowerlifting import FetchError, fetch_personal_bests
 from . import google_health as google_health_routes
@@ -35,10 +36,71 @@ def dashboard_data():
     history = db.get_entries(limit=180)
     app_config = db.get_config()
     settings = db.get_settings()
-    payload = metrics.build_dashboard_payload(latest, history, app_config, settings)
+    health_metrics = db.get_health_metrics(limit=180)
+    payload = metrics.build_dashboard_payload(
+        latest, history, app_config, settings, health_metrics
+    )
     payload["entry_count"] = db.count_entries()
     payload["latest_health_metric"] = db.get_latest_health_metric()
     return payload
+
+
+@router.get("/widgets/catalog")
+def widgets_catalog():
+    """Returns widgets that may be added in the active Health configuration."""
+    settings = db.get_settings()
+    configured = bool(settings.get("google_health_client_id")) and bool(
+        settings.get("google_health_client_secret")
+    )
+    return {"widgets": widget_catalog.build_catalog(configured)}
+
+
+@router.get("/dashboard/layout")
+def get_dashboard_layout():
+    """Returns a saved layout, or the configuration-sensitive default."""
+    settings = db.get_settings()
+    configured = bool(settings.get("google_health_client_id")) and bool(
+        settings.get("google_health_client_secret")
+    )
+    raw = settings.get("dashboard_layout")
+    if raw:
+        try:
+            return {"widgets": json.loads(raw), "is_default": False}
+        except (TypeError, ValueError):
+            pass
+    return {"widgets": widget_catalog.default_layout(configured), "is_default": True}
+
+
+@router.post("/dashboard/layout")
+def save_dashboard_layout(payload: dict):
+    """Stores valid widget positions while preserving valid gated widget ids."""
+    items = payload.get("widgets")
+    if not isinstance(items, list):
+        raise HTTPException(status_code=400, detail="widgets must be a list")
+    catalog_ids = {widget["id"] for widget in widget_catalog.WIDGET_CATALOG}
+    cleaned = []
+    for item in items:
+        if not isinstance(item, dict) or item.get("id") not in catalog_ids:
+            continue
+        try:
+            cleaned.append({
+                "id": item["id"],
+                "x": int(item["x"]),
+                "y": int(item["y"]),
+                "w": int(item["w"]),
+                "h": int(item["h"]),
+            })
+        except (KeyError, TypeError, ValueError):
+            continue
+    db.update_settings(dashboard_layout=json.dumps(cleaned))
+    return {"ok": True}
+
+
+@router.post("/dashboard/layout/reset")
+def reset_dashboard_layout():
+    """Clears the saved layout so the current default is used on next load."""
+    db.update_settings(dashboard_layout=None)
+    return {"ok": True}
 
 
 @router.get("/settings")
@@ -77,12 +139,12 @@ def save_settings(payload: dict):
     allowed = {
         "timezone", "display_name", "date_of_birth", "openpowerlifting_username",
         "google_health_client_id", "google_health_client_secret",
-        "google_health_enabled_categories",
+        "google_health_enabled_categories", "lifter_sex",
     }
     clearable = {
         "display_name", "date_of_birth", "openpowerlifting_username",
         "google_health_client_id", "google_health_client_secret",
-        "google_health_enabled_categories",
+        "google_health_enabled_categories", "lifter_sex",
     }
 
     fields = {}
@@ -110,6 +172,9 @@ def save_settings(payload: dict):
         if not isinstance(categories, list) or any(category not in valid_categories for category in categories):
             raise HTTPException(status_code=400, detail="Google Health categories are invalid.")
         fields["google_health_enabled_categories"] = json.dumps(categories)
+
+    if "lifter_sex" in fields and fields["lifter_sex"] not in {"male", "female", None}:
+        raise HTTPException(status_code=400, detail="Sex must be male or female.")
 
     if not fields:
         raise HTTPException(status_code=400, detail="No recognised settings fields provided")

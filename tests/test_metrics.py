@@ -115,3 +115,56 @@ def test_total_card_has_target_attainment_but_not_competition_attainment():
     assert total["target_attainment_pct"] == 91.9
     assert "competition_attainment_pct" not in total
     assert total["personal_best"] == 500.0
+
+
+def test_dashboard_cards_have_stable_widget_ids():
+    from app.metrics import build_index_cards
+
+    lift_ids = {card["id"] for card in build_lift_cards({}, {})}
+    body_ids = {card["id"] for card in build_body_cards({}, {})}
+    index_ids = {card["id"] for card in build_index_cards({}, {})}
+    assert lift_ids == {"lift.squat", "lift.bench", "lift.deadlift"}
+    assert build_total_card({})["id"] == "lift.total"
+    assert body_ids == {
+        "body.body_weight_mass", "body.skeletal_muscle_mass", "body.body_fat_mass", "body.percent_body_fat"
+    }
+    assert index_ids == {"index.bmi", "index.bmr"}
+
+
+def test_build_analytics_payload_with_full_data():
+    from datetime import date
+    from app.metrics import build_analytics_payload
+
+    entry = {
+        "total_weight_lifted_current": 450.0,
+        "body_weight_mass": 90.0,
+        "squat_1rm_current": 160.0,
+        "bench_1rm_current": 110.0,
+        "deadlift_1rm_current": 180.0,
+    }
+    history = [
+        {"entry_date": "2026-08-01", "squat": 150.0, "bench": 100.0, "deadlift": 170.0},
+        {"entry_date": "2026-08-15", "squat": 160.0, "bench": 110.0, "deadlift": 180.0},
+    ]
+    payload = build_analytics_payload(
+        entry,
+        {"squat_1rm_target": 170.0, "bench_1rm_target": 120.0, "deadlift_1rm_target": 190.0},
+        {"lifter_sex": "male"},
+        history,
+        today=date(2026, 8, 22),
+    )
+    assert payload["dots_score"]["value"] is not None
+    assert payload["ratios"]["squat"] == {"value": 1.78}
+    assert payload["rate_of_change"]["bench"] == {"kg_per_week": 5.0}
+    assert payload["projected_dates"]["deadlift"]["state"] == "projected"
+
+
+def test_build_analytics_payload_with_no_data():
+    from datetime import date
+    from app.metrics import build_analytics_payload
+
+    payload = build_analytics_payload({}, {}, {}, [], today=date(2026, 8, 22))
+    assert payload["dots_score"] == {"value": None, "reason": "sex_not_configured"}
+    assert payload["ratios"]["squat"] == {"value": None}
+    assert payload["rate_of_change"]["squat"] == {"kg_per_week": None}
+    assert payload["projected_dates"]["squat"] == {"state": "no_data"}

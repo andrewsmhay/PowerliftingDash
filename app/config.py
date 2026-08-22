@@ -34,3 +34,6 @@ PUBLIC_BASE_URL = os.environ.get("PLD_PUBLIC_BASE_URL", f"http://localhost:{PORT
 GOOGLE_HEALTH_SYNC_INTERVAL_SECONDS = int(
     os.environ.get("PLD_GOOGLE_HEALTH_SYNC_INTERVAL_SECONDS", "3600")
 )
+
+# Trailing window for current lift trends and target projections.
+RATE_OF_CHANGE_WINDOW_DAYS = int(os.environ.get("PLD_RATE_OF_CHANGE_WINDOW_DAYS", "90"))

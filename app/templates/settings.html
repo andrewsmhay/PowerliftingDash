@@ -24,6 +24,16 @@
         </div>
 
         <div class="field-group">
+            <label for="lifter_sex">Sex (for DOTS score)</label>
+            <select id="lifter_sex" name="lifter_sex">
+                <option value="" {% if not settings.lifter_sex %}selected{% endif %}>Not set</option>
+                <option value="male" {% if settings.lifter_sex == 'male' %}selected{% endif %}>Male</option>
+                <option value="female" {% if settings.lifter_sex == 'female' %}selected{% endif %}>Female</option>
+            </select>
+            <div class="hint">Only used to calculate the DOTS score.</div>
+        </div>
+
+        <div class="field-group">
             <label for="date_of_birth">Date of birth</label>
             <input type="text" id="date_of_birth" name="date_of_birth" value="{{ date_of_birth_display or '' }}"
                    pattern="\d{1,2}/\d{1,2}/\d{4}" placeholder="dd/mm/yyyy">
