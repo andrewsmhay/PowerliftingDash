@@ -1,0 +1,24 @@
+[Unit]
+Description=Powerlifting Dashboard
+After=network.target
+
+[Service]
+Type=simple
+User=powerliftingdash
+Group=powerliftingdash
+WorkingDirectory=/opt/powerliftingdash
+EnvironmentFile=/etc/powerliftingdash/powerliftingdash.env
+ExecStart=/opt/powerliftingdash/.venv/bin/python3 -m app
+Restart=on-failure
+RestartSec=5
+
+# Light sandboxing: the service only needs to read its own install
+# directory and write to its data directory.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/powerliftingdash
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

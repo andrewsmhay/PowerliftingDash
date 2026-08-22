@@ -1,13 +1,17 @@
-"""Runtime configuration. Values come from environment variables so the
-container can be configured at `docker run` / compose time; anything not
+"""Runtime configuration. Values come from environment variables, so the
+app is configured the same way whether it runs in Docker (`docker run -e`
+/ compose `environment:`) or natively on a Linux host (systemd
+`Environment=` / `EnvironmentFile=` - see deploy/systemd/). Anything not
 set here falls back to defaults stored in the app_settings DB row, which is
 editable from the web UI's Settings page.
 """
 import os
 from pathlib import Path
 
-# All persistent state (SQLite DB) lives under /data, which should be
-# mounted as a volume so it survives container restarts.
+# All persistent state (SQLite DB) lives here. The Docker image defaults
+# this to /data (mounted as a volume so it survives container restarts);
+# native/systemd deployments should set PLD_DATA_DIR to a proper FHS path
+# such as /var/lib/powerliftingdash - see deploy/systemd/.
 DATA_DIR = Path(os.environ.get("PLD_DATA_DIR", "/data"))
 DB_PATH = DATA_DIR / os.environ.get("PLD_DB_FILENAME", "powerlifting_dash.sqlite3")
 

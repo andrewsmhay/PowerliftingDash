@@ -3,9 +3,12 @@
 A slim, self-hosted personal health and powerlifting dashboard, designed to
 run full screen on a monitor (kiosk-style).
 
-- **Backend:** Python (FastAPI + SQLite), packaged as a slimmed-down
+- **Backend:** Python (FastAPI + SQLite). Runs either as a slimmed-down
   multi-arch Alpine Docker image (works on a Raspberry Pi or a regular
-  amd64 machine).
+  amd64 machine) or natively as a systemd service on a Linux VM (AWS,
+  GCP, Azure, or any other IaaS host) - see "Running it" below.
+  Both modes are driven by the same environment variables and the same
+  `python3 -m app` entry point, so behaviour is identical either way.
 - **Frontend:** server-rendered dark dashboard, vanilla JS + a locally
   vendored copy of Chart.js (no CDN calls at runtime, so it works offline
   once built).
@@ -214,6 +217,16 @@ Notes and failure modes:
 
 ## Running it
 
+PowerliftingDash runs the same code either as a Docker container or as a
+native systemd service on a plain Linux host - pick whichever suits where
+you're putting the monitor. Both modes read the same environment
+variables (`PLD_DATA_DIR`, `PLD_DB_FILENAME`, `PLD_HOST`, `PLD_PORT`,
+`PLD_DASHBOARD_POLL_SECONDS`) through the same `python3 -m app` entry
+point (`app/__main__.py`), so there's no behavioural difference between
+the two beyond how the process is supervised.
+
+### Option A: Docker (a Raspberry Pi or small always-on box by the monitor)
+
 ```bash
 # Build and run with Docker Compose (recommended)
 docker compose up --build -d
@@ -234,7 +247,7 @@ Then open `http://<host>:8080/` full screen on the monitor. Log your
 first entry at `http://<host>:8080/entries/new` - no other configuration
 is required.
 
-### Multi-architecture builds
+#### Multi-architecture builds
 
 The `Dockerfile` builds cleanly for both `linux/amd64` and `linux/arm64`.
 To build and push a multi-arch manifest to a registry:
@@ -244,16 +257,89 @@ docker buildx build --platform linux/amd64,linux/arm64 \
   -t <your-registry>/powerliftingdash:latest --push .
 ```
 
+### Option B: native install on a Linux VM (AWS, GCP, Azure, or any IaaS host)
+
+No Docker required - this installs Python, a virtual environment and a
+systemd service directly on the host. Tested against Ubuntu/Debian and
+Amazon Linux/RHEL family images, the two most common defaults on EC2,
+Compute Engine and Azure VMs.
+
+```bash
+git clone https://github.com/andrewsmhay/PowerliftingDash.git
+cd PowerliftingDash
+sudo ./deploy/install.sh
+```
+
+This creates a dedicated `powerliftingdash` system user, installs the app
+to `/opt/powerliftingdash` with its own virtual environment, stores the
+SQLite database under `/var/lib/powerliftingdash`, writes a starter
+config to `/etc/powerliftingdash/powerliftingdash.env`, and enables +
+starts a `powerliftingdash.service` systemd unit (auto-restarts on
+failure, starts on boot). See `deploy/powerliftingdash.env.example` for
+every setting and what it does.
+
+Useful commands once installed:
+
+```bash
+systemctl status powerliftingdash     # is it running?
+systemctl restart powerliftingdash    # after editing the env file
+journalctl -u powerliftingdash -f     # tail the logs
+```
+
+#### Updating a native install
+
+Re-run the same install script from an updated checkout; it resyncs the
+code, reinstalls dependencies and restarts the service. It never
+overwrites your `/etc/powerliftingdash/powerliftingdash.env`, so any
+custom host/port/data-directory settings survive the update:
+
+```bash
+cd PowerliftingDash && git pull
+sudo ./deploy/install.sh
+```
+
+To remove it entirely: `sudo ./deploy/uninstall.sh` (add `--purge-data`
+to also delete the SQLite database).
+
+#### Prefer to run it by hand instead of the install script?
+
+```bash
+python3 -m venv .venv && . .venv/bin/activate
+pip install -r requirements.txt
+PLD_DATA_DIR=/var/lib/powerliftingdash PLD_PORT=8080 python3 -m app
+```
+
+#### Exposing it on a public cloud VM
+
+PowerliftingDash has no login or authentication of any kind - it's built
+as a personal, single-user dashboard. Before opening it up on a
+cloud host with a public IP:
+
+- **Restrict inbound access at the network layer first.** In your
+  provider's firewall (AWS Security Group, GCP firewall rule, Azure
+  Network Security Group), only allow the dashboard's port from your own
+  IP address or a VPN/tailnet, rather than `0.0.0.0/0`.
+- **If you do need it reachable from anywhere**, put a reverse proxy
+  (Caddy or nginx) in front of it on 80/443 with TLS and HTTP basic auth,
+  and only expose 80/443 publicly - keep port 8080 itself closed to the
+  internet.
+- The DHCP-assigned private/public IP of the VM doesn't need any
+  dashboard-side configuration either way, since `PLD_HOST=0.0.0.0`
+  already listens on every interface the host has.
+
 ## Project layout
 
 ```
 app/
+  __main__.py        Shared entry point for Docker and native (`python3 -m app`)
   main.py            FastAPI app, startup/shutdown hooks
-  config.py          Environment-driven configuration
+  config.py          Environment-driven configuration (same env vars, both deployment modes)
   db.py              SQLite access, upsert/edit/delete logic, app_settings config
   numeric.py         Shared numeric string coercion for the manual entry form
   derive.py          Computes all "read from new date entry" columns from a config snapshot
   date_utils.py      Explicit dd/mm/yyyy date parsing
+  formatting.py      Dashboard title formatting (possessive display name)
+  openpowerlifting.py Fetches personal bests from openpowerlifting.org
   metrics.py         Raw entry row + config -> dashboard card/chart payload
   routes/            Page routes (dashboard, entries, targets, settings) and JSON API
   templates/         Jinja2 templates (dashboard, entry_form, entries_list, targets, settings)
@@ -263,6 +349,11 @@ schema/
   v1_items.csv        Source-of-truth data dictionary
   generate_schema.py   Regenerates the schema from the CSV above; splits entries vs app_settings
 tests/                 pytest unit tests (date parsing, DB, derive, entries route, targets route)
+deploy/
+  install.sh                        Installs/updates PowerliftingDash as a native systemd service
+  uninstall.sh                      Removes the native install
+  powerliftingdash.env.example      Template for /etc/powerliftingdash/powerliftingdash.env
+  systemd/powerliftingdash.service  systemd unit installed by install.sh
 Dockerfile             Multi-stage, slim Alpine, multi-arch
 docker-compose.yml
 ```
