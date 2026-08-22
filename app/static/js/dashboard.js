@@ -17,6 +17,10 @@
     oxygen_saturation_pct: { unit: "%", decimals: 1 },
   };
 
+  const DEFAULT_CELL_HEIGHT = 50;
+  const MIN_CELL_HEIGHT = 28;
+  const LIST_LAYOUT_BREAKPOINT = 700;
+
   let grid;
   let editing = false;
   let catalog = [];
@@ -358,6 +362,29 @@
       addRemoveControls();
       populateTray();
     }
+    fitGridHeight();
+  }
+
+  function currentMaxRow(screen) {
+    return screen.widgets.reduce((max, item) => Math.max(max, item.y + item.h), 1);
+  }
+
+  function fitGridHeight() {
+    if (!grid) return;
+    if (editing || window.innerWidth < LIST_LAYOUT_BREAKPOINT) {
+      grid.cellHeight(DEFAULT_CELL_HEIGHT, true);
+      return;
+    }
+    const screen = activeScreen();
+    const gridEl = document.getElementById("dashboard-grid");
+    if (!screen || !screen.widgets.length || !gridEl) return;
+    const maxRows = currentMaxRow(screen);
+    const top = gridEl.getBoundingClientRect().top;
+    const bottomPadding = parseFloat(window.getComputedStyle(document.body).paddingBottom) || 0;
+    const available = window.innerHeight - top - bottomPadding;
+    const fitted = Math.floor(available / maxRows);
+    const cellHeight = Math.max(MIN_CELL_HEIGHT, Math.min(DEFAULT_CELL_HEIGHT, fitted));
+    grid.cellHeight(cellHeight, true);
   }
 
   function liveScreenWidgets() {
@@ -557,6 +584,7 @@
       startRotationTimer();
     }
     renderScreenTabs();
+    fitGridHeight();
     requestAnimationFrame(() => {
       Object.values(charts).forEach((chart) => chart.resize());
     });
@@ -633,7 +661,7 @@
   function initialise() {
     grid = GridStack.init({
       column: 12,
-      cellHeight: 50,
+      cellHeight: DEFAULT_CELL_HEIGHT,
       margin: 10,
       float: true,
       columnOpts: { breakpoints: [{ w: 700, c: 1, layout: "list" }] },
@@ -643,6 +671,11 @@
       const widgetId = element.gridstackNode && element.gridstackNode.id;
       const chart = charts[widgetId];
       if (chart && element.querySelector("canvas")) chart.resize();
+    });
+    let resizeDebounce = null;
+    window.addEventListener("resize", () => {
+      window.clearTimeout(resizeDebounce);
+      resizeDebounce = window.setTimeout(fitGridHeight, 150);
     });
     document.getElementById("edit-dashboard-btn").addEventListener("click", () => setEditing(true));
     document.getElementById("save-dashboard-btn").addEventListener("click", () => {
