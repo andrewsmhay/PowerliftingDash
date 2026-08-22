@@ -27,20 +27,50 @@ if [[ "${EUID}" -ne 0 ]]; then
   exit 1
 fi
 
-echo "==> Installing OS packages (python3, venv, pip, rsync)"
+# Preferred Python versions, newest first. Amazon Linux 2023 and other
+# RHEL-family/Fedora hosts pin the plain "python3" package to an old
+# release for the life of the OS (3.9 on Amazon Linux 2023) and ship
+# newer interpreters only as separate namespaced packages, e.g.
+# python3.12/python3.12-pip, so we look for those explicitly before
+# falling back to whatever "python3" resolves to.
+PYTHON_CANDIDATES=(python3.13 python3.12 python3.11 python3.10)
+
+echo "==> Installing OS packages (python3, venv, pip, rsync, git)"
 if command -v apt-get >/dev/null 2>&1; then
   apt-get update -y
-  apt-get install -y python3 python3-venv python3-pip rsync
+  apt-get install -y python3 python3-venv python3-pip rsync git
 elif command -v dnf >/dev/null 2>&1; then
-  dnf install -y python3 python3-pip rsync
+  dnf install -y rsync git
+  PY_PKG=""
+  for cand in "${PYTHON_CANDIDATES[@]}"; do
+    if dnf install -y "${cand}" "${cand}-pip" 2>/dev/null; then
+      PY_PKG="${cand}"
+      break
+    fi
+  done
+  if [[ -z "${PY_PKG}" ]]; then
+    echo "==> No versioned Python 3.10+ package found; falling back to python3/python3-pip"
+    dnf install -y python3 python3-pip
+  fi
 elif command -v yum >/dev/null 2>&1; then
-  yum install -y python3 python3-pip rsync
+  yum install -y rsync git
+  PY_PKG=""
+  for cand in "${PYTHON_CANDIDATES[@]}"; do
+    if yum install -y "${cand}" "${cand}-pip" 2>/dev/null; then
+      PY_PKG="${cand}"
+      break
+    fi
+  done
+  if [[ -z "${PY_PKG}" ]]; then
+    echo "==> No versioned Python 3.10+ package found; falling back to python3/python3-pip"
+    yum install -y python3 python3-pip
+  fi
 else
-  echo "Could not detect apt-get, dnf or yum. Install Python 3.10+, pip and rsync manually, then re-run this script." >&2
+  echo "Could not detect apt-get, dnf or yum. Install Python 3.10+, pip, rsync and git manually, then re-run this script." >&2
   exit 1
 fi
 
-PYTHON_BIN="$(command -v python3.12 || command -v python3.11 || command -v python3.10 || command -v python3)"
+PYTHON_BIN="$(command -v python3.13 || command -v python3.12 || command -v python3.11 || command -v python3.10 || command -v python3)"
 PY_VERSION="$("${PYTHON_BIN}" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
 echo "==> Using ${PYTHON_BIN} (Python ${PY_VERSION})"
 if ! "${PYTHON_BIN}" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)'; then

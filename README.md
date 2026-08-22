@@ -270,6 +270,14 @@ cd PowerliftingDash
 sudo ./deploy/install.sh
 ```
 
+You don't need to install anything yourself first - the script installs
+every OS package it needs (Python 3.10+, pip, rsync, git) before doing
+anything else. On Amazon Linux and other RHEL-family/Fedora hosts the
+plain `python3` package stays on an old release for the life of the OS
+(3.9 on Amazon Linux 2023), so the script specifically looks for a
+versioned package new enough for PowerliftingDash (`python3.12`,
+`python3.11`, and so on) rather than assuming `python3` is recent enough.
+
 This creates a dedicated `powerliftingdash` system user, installs the app
 to `/opt/powerliftingdash` with its own virtual environment, stores the
 SQLite database under `/var/lib/powerliftingdash`, writes a starter
