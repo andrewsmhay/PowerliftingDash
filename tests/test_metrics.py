@@ -63,6 +63,44 @@ def test_body_card_progress_unaffected():
     assert weight["progress_pct"] == 100.0
 
 
+def test_lean_mass_card_is_bodyweight_minus_fat_mass():
+    entry = {"body_weight_mass": 82.0, "body_fat_mass": 15.5}
+    cards = build_body_cards(entry, config={})
+    lean_mass = next(c for c in cards if c["id"] == "body.lean_mass")
+    assert lean_mass["label"] == "Lean Mass"
+    assert lean_mass["unit"] == "kg"
+    assert lean_mass["current"] == 66.5
+    assert lean_mass["target"] is None
+    assert lean_mass["to_date"] is None
+
+
+def test_lean_mass_card_none_when_inputs_missing():
+    cards = build_body_cards({"body_weight_mass": 82.0}, config={})
+    lean_mass = next(c for c in cards if c["id"] == "body.lean_mass")
+    assert lean_mass["current"] is None
+
+
+def test_lean_mass_to_date_uses_earliest_entry_with_both_inputs():
+    history = [
+        {"entry_date": "2026-06-01", "body_weight_mass": 90.0},
+        {"entry_date": "2026-06-08", "body_weight_mass": 88.0, "body_fat_mass": 20.0},
+        {"entry_date": "2026-06-15", "body_weight_mass": 84.0, "body_fat_mass": 15.0},
+    ]
+    entry = {"body_weight_mass": 82.0, "body_fat_mass": 14.0}
+    cards = build_body_cards(entry, config={}, history_asc=history)
+    lean_mass = next(c for c in cards if c["id"] == "body.lean_mass")
+    # current lean mass 68.0, baseline is the first row with both fields (88.0 - 20.0 = 68.0)
+    assert lean_mass["current"] == 68.0
+    assert lean_mass["to_date"] == 0.0
+
+
+def test_lean_mass_to_date_none_without_history():
+    entry = {"body_weight_mass": 82.0, "body_fat_mass": 14.0}
+    cards = build_body_cards(entry, config={})
+    lean_mass = next(c for c in cards if c["id"] == "body.lean_mass")
+    assert lean_mass["to_date"] is None
+
+
 def test_progress_pct_none_when_missing_current_or_target():
     config = {"squat_1rm_target": 170.0}
     cards = build_lift_cards(entry=None, config=config)  # current missing
@@ -126,7 +164,8 @@ def test_dashboard_cards_have_stable_widget_ids():
     assert lift_ids == {"lift.squat", "lift.bench", "lift.deadlift"}
     assert build_total_card({})["id"] == "lift.total"
     assert body_ids == {
-        "body.body_weight_mass", "body.skeletal_muscle_mass", "body.body_fat_mass", "body.percent_body_fat"
+        "body.body_weight_mass", "body.skeletal_muscle_mass", "body.body_fat_mass", "body.percent_body_fat",
+        "body.lean_mass",
     }
     assert index_ids == {"index.bmi", "index.bmr"}
 

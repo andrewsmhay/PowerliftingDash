@@ -9,6 +9,7 @@ WIDGET_CATALOG = [
     {"id": "body.skeletal_muscle_mass", "label": "Skeletal Muscle Mass", "category": "Body Composition", "kind": "body_card"},
     {"id": "body.body_fat_mass", "label": "Body Fat Mass", "category": "Body Composition", "kind": "body_card"},
     {"id": "body.percent_body_fat", "label": "Body Fat", "category": "Body Composition", "kind": "body_card"},
+    {"id": "body.lean_mass", "label": "Lean Mass", "category": "Body Composition", "kind": "body_card"},
     {"id": "index.bmi", "label": "BMI", "category": "Body Composition", "kind": "index_card"},
     {"id": "index.bmr", "label": "BMR", "category": "Body Composition", "kind": "index_card"},
     {"id": "score.dots", "label": "DOTS Score", "category": "Analytics", "kind": "dots_card"},
@@ -67,6 +68,7 @@ def default_screens(google_health_configured: bool) -> list[dict]:
                 {"id": "body.percent_body_fat", "x": 9, "y": 6, "w": 3, "h": 4},
                 {"id": "index.bmi", "x": 0, "y": 10, "w": 3, "h": 4},
                 {"id": "index.bmr", "x": 3, "y": 10, "w": 3, "h": 4},
+                {"id": "body.lean_mass", "x": 6, "y": 10, "w": 3, "h": 4},
             ],
         },
         {

@@ -70,12 +70,18 @@
   function bodyCardHtml(card) {
     const pct = card.progress_pct === null || card.progress_pct === undefined ? null : card.progress_pct;
     const progressHtml = pct === null ? "" : '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%"></div></div>';
+    const hasTarget = card.target !== null && card.target !== undefined;
+    const hasToDate = card.to_date !== null && card.to_date !== undefined;
+    const targetHtml = hasTarget ? '<span>Target <strong>' + fmt(card.target) + " " + card.unit + "</strong></span>" : "";
+    const toDateHtml = hasToDate ? '<span>To date <strong>' + fmt(card.to_date) + " " + card.unit + "</strong></span>" : "";
+    const metaHtml = hasTarget || hasToDate
+      ? '<div class="card-meta">' + targetHtml + toDateHtml + "</div>"
+      : "";
     return '<div class="card">' +
       '<div class="card-label">' + card.label + "</div>" +
       '<div class="card-value">' + valueHtml(card.current, card.unit) + "</div>" +
       progressHtml +
-      '<div class="card-meta"><span>Target <strong>' + (fmt(card.target) ?? "Not set") + " " + card.unit + '</strong></span>' +
-      '<span>To date <strong>' + (fmt(card.to_date) ?? "Not set") + " " + card.unit + "</strong></span></div></div>";
+      metaHtml + "</div>";
   }
 
   function indexCardHtml(card) {

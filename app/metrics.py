@@ -91,7 +91,45 @@ def build_total_card(entry: dict | None, settings: dict | None = None) -> dict:
     }
 
 
-def build_body_cards(entry: dict | None, config: dict | None = None) -> list[dict]:
+def _lean_mass(row: dict) -> float | None:
+    body_weight = _safe(row.get("body_weight_mass"))
+    body_fat = _safe(row.get("body_fat_mass"))
+    if body_weight is None or body_fat is None:
+        return None
+    return round(body_weight - body_fat, 2)
+
+
+def _lean_mass_card(entry: dict, history_asc: list[dict] | None = None) -> dict:
+    """Lean mass (bodyweight minus fat mass) is calculated on the fly from
+    the two manual smart-scale readings rather than stored on the entry -
+    it is not part of Andrew's original 44-field schema, so it has no
+    target of its own. "To date" follows the same baseline convention as
+    every other body card: current minus the value on the earliest entry
+    that has both inputs recorded.
+    """
+    current = _lean_mass(entry)
+    to_date = None
+    if current is not None:
+        for row in history_asc or []:
+            baseline = _lean_mass(row)
+            if baseline is not None:
+                to_date = round(current - baseline, 2)
+                break
+    return {
+        "id": "body.lean_mass",
+        "label": "Lean Mass",
+        "unit": "kg",
+        "current": current,
+        "target": None,
+        "remaining": None,
+        "to_date": to_date,
+        "progress_pct": None,
+    }
+
+
+def build_body_cards(
+    entry: dict | None, config: dict | None = None, history_asc: list[dict] | None = None
+) -> list[dict]:
     """Returns cards for body composition readings."""
     entry = entry or {}
     config = config or {}
@@ -110,6 +148,7 @@ def build_body_cards(entry: dict | None, config: dict | None = None) -> list[dic
             "to_date": _safe(entry.get(f"{key}_to_date")),
             "progress_pct": _progress_pct(current, target),
         })
+    cards.append(_lean_mass_card(entry, history_asc))
     return cards
 
 
@@ -225,7 +264,7 @@ def build_dashboard_payload(
         "lift_cards": build_lift_cards(latest_entry, dashboard_config, settings),
         "total_card": build_total_card(latest_entry, settings),
         "weight_change_since_comp": _safe((latest_entry or {}).get("weight_change_since_comp")),
-        "body_cards": build_body_cards(latest_entry, dashboard_config),
+        "body_cards": build_body_cards(latest_entry, dashboard_config, history),
         "index_cards": build_index_cards(latest_entry, dashboard_config),
         "history": history_payload,
         "health_history": [
