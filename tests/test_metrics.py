@@ -101,6 +101,49 @@ def test_lean_mass_to_date_none_without_history():
     assert lean_mass["to_date"] is None
 
 
+def test_body_card_target_attainment_pct_is_unclamped():
+    entry = {"body_weight_mass": 82.0}
+    config = {"body_weight_mass_target": 80.0}
+    cards = build_body_cards(entry, config)
+    weight = next(c for c in cards if c["label"] == "Body Weight")
+    assert weight["progress_pct"] == 100.0
+    assert weight["target_attainment_pct"] == 102.5
+
+
+def test_body_card_target_attainment_pct_none_without_target():
+    entry = {"body_weight_mass": 82.0}
+    cards = build_body_cards(entry, config={})
+    weight = next(c for c in cards if c["label"] == "Body Weight")
+    assert weight["target_attainment_pct"] is None
+
+
+def test_lean_mass_card_has_no_target_attainment_pct():
+    entry = {"body_weight_mass": 82.0, "body_fat_mass": 15.5}
+    cards = build_body_cards(entry, config={})
+    lean_mass = next(c for c in cards if c["id"] == "body.lean_mass")
+    assert lean_mass["target_attainment_pct"] is None
+
+
+def test_index_cards_expose_target_attainment_pct():
+    from app.metrics import build_index_cards
+
+    entry = {"bmi": 24.0, "bmr": 1800.0}
+    config = {"bmi_target": 24.0, "bmr_target": 2000.0}
+    cards = build_index_cards(entry, config)
+    bmi = next(c for c in cards if c["id"] == "index.bmi")
+    bmr = next(c for c in cards if c["id"] == "index.bmr")
+    assert bmi["target_attainment_pct"] == 100.0
+    assert bmr["target_attainment_pct"] == 90.0
+
+
+def test_index_card_target_attainment_pct_none_without_target():
+    from app.metrics import build_index_cards
+
+    cards = build_index_cards({"bmi": 24.0}, config={})
+    bmi = next(c for c in cards if c["id"] == "index.bmi")
+    assert bmi["target_attainment_pct"] is None
+
+
 def test_progress_pct_none_when_missing_current_or_target():
     config = {"squat_1rm_target": 170.0}
     cards = build_lift_cards(entry=None, config=config)  # current missing

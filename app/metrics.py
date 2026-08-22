@@ -124,6 +124,7 @@ def _lean_mass_card(entry: dict, history_asc: list[dict] | None = None) -> dict:
         "remaining": None,
         "to_date": to_date,
         "progress_pct": None,
+        "target_attainment_pct": None,
     }
 
 
@@ -147,6 +148,7 @@ def build_body_cards(
             "remaining": _safe(entry.get(f"{key}_remaining")),
             "to_date": _safe(entry.get(f"{key}_to_date")),
             "progress_pct": _progress_pct(current, target),
+            "target_attainment_pct": _pct(current, target),
         })
     cards.append(_lean_mass_card(entry, history_asc))
     return cards
@@ -164,6 +166,7 @@ def build_index_cards(entry: dict | None, config: dict | None = None) -> list[di
             "current": _safe(entry.get("bmi")),
             "target": _safe(config.get("bmi_target")),
             "to_date": _safe(entry.get("bmi_to_date")),
+            "target_attainment_pct": _pct(_safe(entry.get("bmi")), _safe(config.get("bmi_target"))),
         },
         {
             "id": "index.bmr",
@@ -172,6 +175,7 @@ def build_index_cards(entry: dict | None, config: dict | None = None) -> list[di
             "current": _safe(entry.get("bmr")),
             "target": _safe(config.get("bmr_target")),
             "to_date": _safe(entry.get("bmr_to_date")),
+            "target_attainment_pct": _pct(_safe(entry.get("bmr")), _safe(config.get("bmr_target"))),
         },
     ]
 

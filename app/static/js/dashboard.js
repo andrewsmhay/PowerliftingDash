@@ -40,10 +40,7 @@
 
   function liftCardHtml(card) {
     const pct = card.progress_pct === null || card.progress_pct === undefined ? 0 : card.progress_pct;
-    const targetPct = card.target_attainment_pct;
-    const pctLabelHtml = targetPct === null || targetPct === undefined
-      ? ""
-      : '<span class="progress-pct">' + fmt(targetPct) + "% of target</span>";
+    const pctLabelHtml = pctOfTargetHtml(card.target_attainment_pct);
     const delta = card.competition_delta;
     const compPct = card.competition_attainment_pct;
     let deltaHtml = "";
@@ -67,6 +64,12 @@
       deltaHtml + personalBestHtml + "</div>";
   }
 
+  function pctOfTargetHtml(targetPct) {
+    return targetPct === null || targetPct === undefined
+      ? ""
+      : '<span class="progress-pct">' + fmt(targetPct) + "% of target</span>";
+  }
+
   function bodyCardHtml(card) {
     const pct = card.progress_pct === null || card.progress_pct === undefined ? null : card.progress_pct;
     const progressHtml = pct === null ? "" : '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%"></div></div>';
@@ -81,6 +84,7 @@
       '<div class="card-label">' + card.label + "</div>" +
       '<div class="card-value">' + valueHtml(card.current, card.unit) + "</div>" +
       progressHtml +
+      pctOfTargetHtml(card.target_attainment_pct) +
       metaHtml + "</div>";
   }
 
@@ -88,6 +92,7 @@
     return '<div class="card">' +
       '<div class="card-label">' + card.label + "</div>" +
       '<div class="card-value">' + valueHtml(card.current, card.unit, 1) + "</div>" +
+      pctOfTargetHtml(card.target_attainment_pct) +
       '<div class="card-meta"><span>Target <strong>' + (fmt(card.target) ?? "Not set") + " " + card.unit + '</strong></span>' +
       '<span>To date <strong>' + (fmt(card.to_date) ?? "Not set") + " " + card.unit + "</strong></span></div></div>";
   }
@@ -125,26 +130,23 @@
         '</div><div class="card-value">' + text +
         '</div><div class="card-meta"><span>Bodyweight ratio</span></div></div>';
     }
-    if (type === "rate") {
-      const rate = ((data.rate_of_change || {})[lift] || {}).kg_per_week;
-      let text = '<span class="empty">No data</span>';
-      if (rate !== null && rate !== undefined) {
-        const cls = rate >= 0 ? "positive" : "negative";
-        const sign = rate > 0 ? "+" : "";
-        text = '<span class="rate-value ' + cls + '">' + sign + fmt(rate, 2) + '<span class="unit"> kg/week</span></span>';
-      }
-      return '<div class="card"><div class="card-label">' + widgetLabel(widgetId) +
-        '</div><div class="card-value">' + text +
-        '</div><div class="card-meta"><span>Recent trend</span></div></div>';
+    const rate = ((data.rate_of_change || {})[lift] || {}).kg_per_week;
+    let rateText = '<span class="empty">No data</span>';
+    if (rate !== null && rate !== undefined) {
+      const cls = rate >= 0 ? "positive" : "negative";
+      const sign = rate > 0 ? "+" : "";
+      rateText = '<span class="rate-value ' + cls + '">' + sign + fmt(rate, 2) + '<span class="unit"> kg/week</span></span>';
     }
     const projection = ((data.projected_dates || {})[lift] || {});
-    let text = "No data";
-    if (projection.state === "target_met") text = "Target already met";
-    if (projection.state === "not_on_track") text = "Not on track at current rate";
-    if (projection.state === "too_far") text = "More than 10 years away at current rate";
-    if (projection.state === "projected") text = ukDate(projection.date);
-    return '<div class="card projection-card"><div class="card-label">' + widgetLabel(widgetId) +
-      '</div><div class="projection-value">' + text + "</div></div>";
+    let projectionText = "No data";
+    if (projection.state === "target_met") projectionText = "Target already met";
+    if (projection.state === "not_on_track") projectionText = "Not on track at current rate";
+    if (projection.state === "too_far") projectionText = "More than 10 years away at current rate";
+    if (projection.state === "projected") projectionText = ukDate(projection.date);
+    return '<div class="card"><div class="card-label">' + widgetLabel(widgetId) +
+      '</div><div class="card-value">' + rateText +
+      '</div><div class="card-meta"><span>Recent trend</span></div>' +
+      '<div class="pb-row">Projected target date <strong>' + projectionText + "</strong></div></div>";
   }
 
   function ukDate(isoDate) {
@@ -279,7 +281,6 @@
     dots_card: analyticsCardHtml,
     ratio_card: analyticsCardHtml,
     rate_card: analyticsCardHtml,
-    projection_card: analyticsCardHtml,
   };
 
   const chartRenderers = {

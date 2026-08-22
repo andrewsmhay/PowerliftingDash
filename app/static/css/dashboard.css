@@ -528,19 +528,6 @@ body {
   color: var(--error);
 }
 
-.projection-card {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-}
-
-.projection-value {
-  color: var(--text);
-  font-size: 22px;
-  font-weight: 600;
-  line-height: 1.2;
-}
-
 @media (max-width: 760px) {
   body {
     padding: 20px 16px;
