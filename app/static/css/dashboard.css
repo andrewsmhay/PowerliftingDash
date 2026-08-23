@@ -35,6 +35,10 @@ body {
   padding: 28px 32px 20px;
 }
 
+body.is-fullscreen:not(.dashboard-editing) {
+  overflow: hidden;
+}
+
 .top-bar {
   display: flex;
   align-items: baseline;
@@ -328,6 +332,10 @@ body {
   padding: 10px 12px;
   font-size: 14px;
   font-family: var(--font-body);
+}
+
+#dashboard-grid-viewport {
+  overflow: hidden;
 }
 
 .grid-stack {

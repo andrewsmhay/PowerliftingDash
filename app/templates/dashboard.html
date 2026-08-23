@@ -19,6 +19,7 @@
         <button id="save-dashboard-btn" class="nav-link" type="button" hidden>Save</button>
         <button id="cancel-dashboard-btn" class="nav-link" type="button" hidden>Cancel</button>
         <button id="reset-dashboard-btn" class="nav-link" type="button" hidden>Reset to default</button>
+        <button id="fullscreen-btn" class="nav-link" type="button">Fullscreen</button>
         <span id="entry-count-badge">-</span>
         <a class="gear-link" href="/settings" title="Settings">&#9881;</a>
     </div>
@@ -33,7 +34,9 @@
 {% endif %}
 
 <div id="widget-tray" class="widget-tray" hidden></div>
-<div class="grid-stack" id="dashboard-grid"></div>
+<div id="dashboard-grid-viewport">
+    <div class="grid-stack" id="dashboard-grid"></div>
+</div>
 {% endblock %}
 
 {% block scripts %}

@@ -362,11 +362,103 @@
       addRemoveControls();
       populateTray();
     }
+    applyFitting();
+  }
+
+  function isFullscreen() {
+    return !!(document.fullscreenElement || document.webkitFullscreenElement);
+  }
+
+  function enterFullscreen() {
+    const el = document.documentElement;
+    const request = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (request) request.call(el);
+  }
+
+  function exitFullscreen() {
+    const exit = document.exitFullscreen || document.webkitExitFullscreen;
+    if (exit) exit.call(document);
+  }
+
+  function toggleFullscreen() {
+    if (isFullscreen()) exitFullscreen();
+    else enterFullscreen();
+  }
+
+  function handleFullscreenChange() {
+    const active = isFullscreen();
+    document.body.classList.toggle("is-fullscreen", active);
+    const btn = document.getElementById("fullscreen-btn");
+    if (btn) btn.textContent = active ? "Exit fullscreen" : "Fullscreen";
+    window.setTimeout(applyFitting, 50);
+  }
+
+  function clearFullscreenScale(gridEl, viewportEl) {
+    gridEl.style.transform = "";
+    gridEl.style.width = "";
+    if (viewportEl) viewportEl.style.height = "";
+  }
+
+  function applyFullscreenScale() {
+    const gridEl = document.getElementById("dashboard-grid");
+    const viewportEl = document.getElementById("dashboard-grid-viewport");
+    if (!grid || !gridEl) return;
+    if (!isFullscreen() || editing) {
+      clearFullscreenScale(gridEl, viewportEl);
+      return;
+    }
+    const screen = activeScreen();
+    if (!screen || !screen.widgets.length) {
+      clearFullscreenScale(gridEl, viewportEl);
+      return;
+    }
+    // Fullscreen uses the dashboard's true designed row height (never shrunk,
+    // so no card content can ever be clipped) and instead fits the whole grid
+    // to the viewport with a single uniform scale, which shrinks fonts,
+    // padding and borders together rather than cropping anything.
+    grid.cellHeight(DEFAULT_CELL_HEIGHT, true);
+    const maxRows = currentMaxRow(screen);
+    const naturalHeight = maxRows * DEFAULT_CELL_HEIGHT;
+    const top = gridEl.getBoundingClientRect().top;
+    const bottomPadding = parseFloat(window.getComputedStyle(document.body).paddingBottom) || 0;
+    const available = window.innerHeight - top - bottomPadding;
+    const scale = Math.min(1, available / naturalHeight);
+    if (scale >= 1) {
+      clearFullscreenScale(gridEl, viewportEl);
+      return;
+    }
+    gridEl.style.transformOrigin = "top left";
+    gridEl.style.transform = `scale(${scale})`;
+    gridEl.style.width = (100 / scale) + "%";
+    // transform: scale() shrinks what is painted but GridStack keeps managing
+    // #dashboard-grid's own inline height at the unscaled size (it reasserts
+    // this on its own resize observer, so overriding gridEl.style.height
+    // directly gets clobbered). Instead, collapse the height of the plain
+    // wrapper div around it, which nothing else touches, so the page's
+    // reserved layout space matches what is actually painted.
+    if (viewportEl) viewportEl.style.height = (naturalHeight * scale) + "px";
+    requestAnimationFrame(() => {
+      Object.values(charts).forEach((chart) => chart.resize());
+    });
+  }
+
+  function applyFitting() {
     fitGridHeight();
+    applyFullscreenScale();
   }
 
   function currentMaxRow(screen) {
     return screen.widgets.reduce((max, item) => Math.max(max, item.y + item.h), 1);
+  }
+
+  function anyCardContentClipped() {
+    const boxes = document.querySelectorAll(
+      "#dashboard-grid .grid-stack-item-content > .card, #dashboard-grid .grid-stack-item-content > .chart-card"
+    );
+    for (const box of boxes) {
+      if (box.scrollHeight - box.clientHeight > 1) return true;
+    }
+    return false;
   }
 
   function fitGridHeight() {
@@ -383,8 +475,15 @@
     const bottomPadding = parseFloat(window.getComputedStyle(document.body).paddingBottom) || 0;
     const available = window.innerHeight - top - bottomPadding;
     const fitted = Math.floor(available / maxRows);
-    const cellHeight = Math.max(MIN_CELL_HEIGHT, Math.min(DEFAULT_CELL_HEIGHT, fitted));
+    let cellHeight = Math.max(MIN_CELL_HEIGHT, Math.min(DEFAULT_CELL_HEIGHT, fitted));
     grid.cellHeight(cellHeight, true);
+    // Shrinking cell height is only safe as long as no card's fixed-size content
+    // (labels, values, meta rows) gets clipped. Step back up until nothing clips,
+    // trading a page-level scrollbar for guaranteed-readable widget content.
+    while (cellHeight < DEFAULT_CELL_HEIGHT && anyCardContentClipped()) {
+      cellHeight += 1;
+      grid.cellHeight(cellHeight, true);
+    }
   }
 
   function liveScreenWidgets() {
@@ -584,7 +683,7 @@
       startRotationTimer();
     }
     renderScreenTabs();
-    fitGridHeight();
+    applyFitting();
     requestAnimationFrame(() => {
       Object.values(charts).forEach((chart) => chart.resize());
     });
@@ -675,8 +774,21 @@
     let resizeDebounce = null;
     window.addEventListener("resize", () => {
       window.clearTimeout(resizeDebounce);
-      resizeDebounce = window.setTimeout(fitGridHeight, 150);
+      resizeDebounce = window.setTimeout(applyFitting, 150);
     });
+    const fullscreenBtn = document.getElementById("fullscreen-btn");
+    const fullscreenSupported = !!(
+      document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen
+    );
+    if (fullscreenBtn) {
+      if (fullscreenSupported) {
+        fullscreenBtn.addEventListener("click", toggleFullscreen);
+      } else {
+        fullscreenBtn.hidden = true;
+      }
+    }
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    document.addEventListener("webkitfullscreenchange", handleFullscreenChange);
     document.getElementById("edit-dashboard-btn").addEventListener("click", () => setEditing(true));
     document.getElementById("save-dashboard-btn").addEventListener("click", () => {
       saveLayout().catch((error) => window.alert("Could not save dashboard: " + (error.detail || "Unknown error")));
