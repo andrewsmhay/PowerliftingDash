@@ -4,9 +4,11 @@ from datetime import datetime, timezone
 from . import config as runtime_config
 from .analytics import (
     compute_dots_score,
+    compute_ipf_gl_score,
     compute_projected_date,
     compute_rate_of_change,
     compute_ratio,
+    compute_wilks2_score,
 )
 from .formatting import dashboard_title
 
@@ -180,6 +182,68 @@ def build_index_cards(entry: dict | None, config: dict | None = None) -> list[di
     ]
 
 
+# Score widgets (DOTS, Wilks-2, IPF GL Points) all share the same shape -
+# a formula fed by the latest total and bodyweight, a one-off target from
+# /targets, and a delta against the previous entry.
+SCORES = [
+    {"key": "dots", "label": "DOTS", "target_column": "dots_score_target", "compute": compute_dots_score},
+    {"key": "wilks2", "label": "Wilks-2", "target_column": "wilks2_score_target", "compute": compute_wilks2_score},
+    {
+        "key": "ipf_gl", "label": "IPF GL Points", "target_column": "ipf_gl_points_target",
+        "compute": compute_ipf_gl_score,
+    },
+]
+
+
+def _previous_totals(history_asc: list[dict] | None) -> tuple[float | None, float | None]:
+    """Total and bodyweight from the entry immediately before the latest
+    one, used to show increase/decrease on the score widgets. history_asc
+    is oldest-first with the latest entry last, so the previous entry is
+    the second-to-last row."""
+    if not history_asc or len(history_asc) < 2:
+        return None, None
+    previous = history_asc[-2]
+    return _safe(previous.get("total")), _safe(previous.get("body_weight_mass"))
+
+
+def _score_card(
+    score_id: str, label: str, result: dict, target: float | None, delta: float | None
+) -> dict:
+    value = result.get("value")
+    return {
+        "id": score_id,
+        "label": label,
+        "unit": result.get("unit", ""),
+        "value": value,
+        "reason": result.get("reason"),
+        "target": target,
+        "remaining": None if value is None or target is None else round(target - value, 1),
+        "target_attainment_pct": _pct(value, target),
+        "progress_pct": _progress_pct(value, target),
+        "delta_from_last_entry": delta,
+    }
+
+
+def _build_score_cards(
+    total_current: float | None, bodyweight: float | None, sex, dashboard_config: dict, history_asc: list[dict]
+) -> dict:
+    prev_total, prev_bodyweight = _previous_totals(history_asc)
+    cards = {}
+    for score in SCORES:
+        compute = score["compute"]
+        result = compute(total_current, bodyweight, sex)
+        delta = None
+        if result.get("value") is not None and prev_total is not None and prev_bodyweight is not None:
+            previous_result = compute(prev_total, prev_bodyweight, sex)
+            if previous_result.get("value") is not None:
+                delta = round(result["value"] - previous_result["value"], 1)
+        cards[f"{score['key']}_score"] = _score_card(
+            f"score.{score['key']}", score["label"], result,
+            _safe(dashboard_config.get(score["target_column"])), delta,
+        )
+    return cards
+
+
 def _history_payload(history: list[dict]) -> list[dict]:
     return [
         {
@@ -221,12 +285,15 @@ def build_analytics_payload(
         )
         for lift in LIFTS
     }
+    score_cards = _build_score_cards(
+        _safe(entry.get("total_weight_lifted_current")),
+        bodyweight,
+        settings.get("lifter_sex"),
+        dashboard_config,
+        history_asc,
+    )
     return {
-        "dots_score": compute_dots_score(
-            _safe(entry.get("total_weight_lifted_current")),
-            bodyweight,
-            settings.get("lifter_sex"),
-        ),
+        **score_cards,
         "ratios": {
             lift["key"]: compute_ratio(
                 _safe(entry.get(f"{lift['key']}_1rm_current")), bodyweight

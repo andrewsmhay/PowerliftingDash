@@ -130,6 +130,6 @@ def test_layout_reset_returns_to_default(monkeypatch):
 
 def test_widget_catalog_is_gated_by_google_health_credentials(monkeypatch):
     client, db = make_client(monkeypatch)
-    assert len(client.get("/api/widgets/catalog").json()["widgets"]) == 23
+    assert len(client.get("/api/widgets/catalog").json()["widgets"]) == 25
     db.update_settings(google_health_client_id="client", google_health_client_secret="secret")
-    assert len(client.get("/api/widgets/catalog").json()["widgets"]) == 36
+    assert len(client.get("/api/widgets/catalog").json()["widgets"]) == 38

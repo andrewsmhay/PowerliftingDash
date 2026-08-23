@@ -236,6 +236,8 @@ def test_build_analytics_payload_with_full_data():
         today=date(2026, 8, 22),
     )
     assert payload["dots_score"]["value"] is not None
+    assert payload["wilks2_score"]["value"] is not None
+    assert payload["ipf_gl_score"]["value"] is not None
     assert payload["ratios"]["squat"] == {"value": 1.78}
     assert payload["rate_of_change"]["bench"] == {"kg_per_week": 5.0}
     assert payload["projected_dates"]["deadlift"]["state"] == "projected"
@@ -246,7 +248,56 @@ def test_build_analytics_payload_with_no_data():
     from app.metrics import build_analytics_payload
 
     payload = build_analytics_payload({}, {}, {}, [], today=date(2026, 8, 22))
-    assert payload["dots_score"] == {"value": None, "reason": "sex_not_configured"}
+    assert payload["dots_score"]["value"] is None
+    assert payload["dots_score"]["reason"] == "sex_not_configured"
+    assert payload["wilks2_score"]["value"] is None
+    assert payload["wilks2_score"]["reason"] == "sex_not_configured"
+    assert payload["ipf_gl_score"]["value"] is None
+    assert payload["ipf_gl_score"]["reason"] == "sex_not_configured"
     assert payload["ratios"]["squat"] == {"value": None}
     assert payload["rate_of_change"]["squat"] == {"kg_per_week": None}
     assert payload["projected_dates"]["squat"] == {"state": "no_data"}
+
+
+def test_build_analytics_payload_score_cards_include_target_remaining_and_delta():
+    from datetime import date
+    from app.metrics import build_analytics_payload
+
+    history = [
+        {"entry_date": "2026-08-01", "total": 400.0, "body_weight_mass": 90.0},
+        {"entry_date": "2026-08-15", "total": 450.0, "body_weight_mass": 90.0},
+    ]
+    entry = {"total_weight_lifted_current": 450.0, "body_weight_mass": 90.0}
+    payload = build_analytics_payload(
+        entry,
+        {"dots_score_target": 400.0, "wilks2_score_target": 500.0, "ipf_gl_points_target": 90.0},
+        {"lifter_sex": "male"},
+        history,
+        today=date(2026, 8, 22),
+    )
+    for key, target in (
+        ("dots_score", 400.0), ("wilks2_score", 500.0), ("ipf_gl_score", 90.0),
+    ):
+        card = payload[key]
+        assert card["target"] == target
+        assert card["value"] is not None
+        assert card["remaining"] == round(target - card["value"], 1)
+        # The most recent history row before the current entry lifted less
+        # at the same bodyweight, so every score should have increased.
+        assert card["delta_from_last_entry"] is not None
+        assert card["delta_from_last_entry"] > 0
+
+
+def test_build_analytics_payload_score_delta_is_none_without_previous_entry():
+    from datetime import date
+    from app.metrics import build_analytics_payload
+
+    entry = {"total_weight_lifted_current": 450.0, "body_weight_mass": 90.0}
+    payload = build_analytics_payload(
+        entry, {}, {"lifter_sex": "male"},
+        [{"entry_date": "2026-08-22", "total": 450.0, "body_weight_mass": 90.0}],
+        today=date(2026, 8, 22),
+    )
+    assert payload["dots_score"]["delta_from_last_entry"] is None
+    assert payload["wilks2_score"]["delta_from_last_entry"] is None
+    assert payload["ipf_gl_score"]["delta_from_last_entry"] is None

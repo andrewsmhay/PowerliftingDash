@@ -528,6 +528,42 @@
       "read_from_new_date_entry": true,
       "is_config": false,
       "storage": "entries"
+    },
+    {
+      "column": "dots_score_target",
+      "area": "Scores",
+      "item": "DOTS Score (target)",
+      "description": "Target DOTS score",
+      "measurement_type": "DOTS",
+      "sql_type": "REAL",
+      "configured_in_settings": true,
+      "read_from_new_date_entry": false,
+      "is_config": true,
+      "storage": "app_settings"
+    },
+    {
+      "column": "wilks2_score_target",
+      "area": "Scores",
+      "item": "Wilks-2 Score (target)",
+      "description": "Target Wilks-2 (2020) score",
+      "measurement_type": "Wilks-2",
+      "sql_type": "REAL",
+      "configured_in_settings": true,
+      "read_from_new_date_entry": false,
+      "is_config": true,
+      "storage": "app_settings"
+    },
+    {
+      "column": "ipf_gl_points_target",
+      "area": "Scores",
+      "item": "IPF GL Points (target)",
+      "description": "Target IPF GL Points (classic raw, 2020 coefficients)",
+      "measurement_type": "GL Points",
+      "sql_type": "REAL",
+      "configured_in_settings": true,
+      "read_from_new_date_entry": false,
+      "is_config": true,
+      "storage": "app_settings"
     }
   ]
 }

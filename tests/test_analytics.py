@@ -1,3 +1,4 @@
+import math
 import sys
 from datetime import date
 from pathlib import Path
@@ -6,10 +7,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.analytics import (
     DOTS_COEFFICIENTS,
+    IPF_GL_COEFFICIENTS,
+    WILKS2_COEFFICIENTS,
     compute_dots_score,
+    compute_ipf_gl_score,
     compute_projected_date,
     compute_rate_of_change,
     compute_ratio,
+    compute_wilks2_score,
 )
 
 
@@ -39,6 +44,44 @@ def test_compute_dots_score_returns_reasons_for_missing_inputs():
     assert compute_dots_score(500, 90, None) == {"value": None, "reason": "sex_not_configured"}
     assert compute_dots_score(None, 90, "male") == {"value": None, "reason": "no_data"}
     assert compute_dots_score(500, None, "female") == {"value": None, "reason": "no_data"}
+
+
+def expected_wilks2(total, bodyweight, sex):
+    coefficients = WILKS2_COEFFICIENTS[sex]
+    denominator = (
+        coefficients["a"] + coefficients["b"] * bodyweight + coefficients["c"] * bodyweight ** 2
+        + coefficients["d"] * bodyweight ** 3 + coefficients["e"] * bodyweight ** 4
+        + coefficients["f"] * bodyweight ** 5
+    )
+    return round(total * 600 / denominator, 1)
+
+
+def expected_ipf_gl(total, bodyweight, sex):
+    coefficients = IPF_GL_COEFFICIENTS[sex]
+    denominator = coefficients["A"] - coefficients["B"] * math.exp(-coefficients["C"] * bodyweight)
+    return round(total * 100 / denominator, 1)
+
+
+def test_compute_wilks2_score_for_male_and_female():
+    assert compute_wilks2_score(600, 100, "male") == {"value": expected_wilks2(600, 100, "male"), "unit": "Wilks-2"}
+    assert compute_wilks2_score(400, 65, "female") == {"value": expected_wilks2(400, 65, "female"), "unit": "Wilks-2"}
+
+
+def test_compute_wilks2_score_returns_reasons_for_missing_inputs():
+    assert compute_wilks2_score(500, 90, None) == {"value": None, "reason": "sex_not_configured"}
+    assert compute_wilks2_score(None, 90, "male") == {"value": None, "reason": "no_data"}
+    assert compute_wilks2_score(500, None, "female") == {"value": None, "reason": "no_data"}
+
+
+def test_compute_ipf_gl_score_for_male_and_female():
+    assert compute_ipf_gl_score(600, 100, "male") == {"value": expected_ipf_gl(600, 100, "male"), "unit": "GL Points"}
+    assert compute_ipf_gl_score(400, 65, "female") == {"value": expected_ipf_gl(400, 65, "female"), "unit": "GL Points"}
+
+
+def test_compute_ipf_gl_score_returns_reasons_for_missing_inputs():
+    assert compute_ipf_gl_score(500, 90, None) == {"value": None, "reason": "sex_not_configured"}
+    assert compute_ipf_gl_score(None, 90, "male") == {"value": None, "reason": "no_data"}
+    assert compute_ipf_gl_score(500, None, "female") == {"value": None, "reason": "no_data"}
 
 
 def test_compute_ratio_handles_valid_and_missing_values():

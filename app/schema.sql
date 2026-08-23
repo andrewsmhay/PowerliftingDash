@@ -70,6 +70,9 @@ CREATE TABLE IF NOT EXISTS app_settings (
     percent_body_fat_target REAL,  -- Status: Percent Body Fat (target) (%) - set on /targets
     bmi_target REAL,  -- Status: BMI (target) (kg/m^2) - set on /targets
     bmr_target REAL,  -- Status: BMR (target) (kcal) - set on /targets
+    dots_score_target REAL,  -- Scores: DOTS Score (target) (DOTS) - set on /targets
+    wilks2_score_target REAL,  -- Scores: Wilks-2 Score (target) (Wilks-2) - set on /targets
+    ipf_gl_points_target REAL,  -- Scores: IPF GL Points (target) (GL Points) - set on /targets
     updated_at TEXT
 );
 

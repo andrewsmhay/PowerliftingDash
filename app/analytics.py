@@ -1,4 +1,5 @@
 """Pure calculation helpers for dashboard analytics widgets."""
+import math
 from datetime import date, timedelta
 
 DOTS_COEFFICIENTS = {
@@ -31,6 +32,65 @@ def compute_dots_score(total_kg, bodyweight_kg, sex):
     if denominator <= 0:
         return {"value": None, "reason": "no_data"}
     return {"value": round(total_kg * 500 / denominator, 1), "unit": "DOTS"}
+
+
+# Wilks 2020 ("Wilks-2") coefficients. Source: https://en.wikipedia.org/wiki/Wilks_coefficient
+# Normalisation constant is 600 (the original 1994 Wilks formula used 500 -
+# that superseded version is not implemented here).
+WILKS2_COEFFICIENTS = {
+    "male": {
+        "a": 47.46178854, "b": 8.472061379, "c": 0.07369410346,
+        "d": -0.001395833811, "e": 7.07665973070743e-6, "f": -1.20804336482315e-8,
+    },
+    "female": {
+        "a": -125.4255398, "b": 13.71219419, "c": -0.03307250631,
+        "d": -0.001050400051, "e": 9.38773881462799e-6, "f": -2.3334613884954e-8,
+    },
+}
+
+
+def compute_wilks2_score(total_kg, bodyweight_kg, sex):
+    """Returns a Wilks-2 (2020) value, or a reason when the inputs are
+    incomplete. Same shape as compute_dots_score."""
+    if sex not in WILKS2_COEFFICIENTS:
+        return {"value": None, "reason": "sex_not_configured"}
+    if total_kg is None or bodyweight_kg is None:
+        return {"value": None, "reason": "no_data"}
+    coefficients = WILKS2_COEFFICIENTS[sex]
+    bodyweight = bodyweight_kg
+    denominator = (
+        coefficients["a"]
+        + coefficients["b"] * bodyweight
+        + coefficients["c"] * bodyweight ** 2
+        + coefficients["d"] * bodyweight ** 3
+        + coefficients["e"] * bodyweight ** 4
+        + coefficients["f"] * bodyweight ** 5
+    )
+    if denominator <= 0:
+        return {"value": None, "reason": "no_data"}
+    return {"value": round(total_kg * 600 / denominator, 1), "unit": "Wilks-2"}
+
+
+# IPF GL Points (classic/raw, 2020 season) coefficients.
+# Source: https://www.powerlifting.sport/fileadmin/ipf/data/ipf-formula/IPF_GL_Coefficients-2020.pdf
+IPF_GL_COEFFICIENTS = {
+    "male": {"A": 1199.72839, "B": 1025.18162, "C": 0.00921},
+    "female": {"A": 610.32796, "B": 1045.59282, "C": 0.03048},
+}
+
+
+def compute_ipf_gl_score(total_kg, bodyweight_kg, sex):
+    """Returns an IPF GL Points value, or a reason when the inputs are
+    incomplete. Same shape as compute_dots_score."""
+    if sex not in IPF_GL_COEFFICIENTS:
+        return {"value": None, "reason": "sex_not_configured"}
+    if total_kg is None or bodyweight_kg is None:
+        return {"value": None, "reason": "no_data"}
+    coefficients = IPF_GL_COEFFICIENTS[sex]
+    denominator = coefficients["A"] - coefficients["B"] * math.exp(-coefficients["C"] * bodyweight_kg)
+    if denominator <= 0:
+        return {"value": None, "reason": "no_data"}
+    return {"value": round(total_kg * 100 / denominator, 1), "unit": "GL Points"}
 
 
 def compute_ratio(lift_1rm_kg, bodyweight_kg):

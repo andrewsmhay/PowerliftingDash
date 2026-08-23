@@ -72,6 +72,53 @@ def is_config_item(item: str) -> bool:
     return normalised.endswith(_CONFIG_SUFFIXES)
 
 
+# Score-widget targets (DOTS, Wilks-2, IPF GL Points). These are not on the
+# v1 sheet at all - the scores themselves are calculated on the fly from
+# total + bodyweight (see app/analytics.py), but the *target* Andrew sets
+# for each one is a one-off goal exactly like the v1 (target) items, so it
+# is appended here rather than faked into schema/v1_items.csv. Kept in this
+# script (not hand-edited only into schema_manifest.json) so re-running the
+# generator never drops them.
+EXTRA_CONFIG_COLUMNS = [
+    {
+        "column": "dots_score_target",
+        "area": "Scores",
+        "item": "DOTS Score (target)",
+        "description": "Target DOTS score",
+        "measurement_type": "DOTS",
+        "sql_type": "REAL",
+        "configured_in_settings": True,
+        "read_from_new_date_entry": False,
+        "is_config": True,
+        "storage": "app_settings",
+    },
+    {
+        "column": "wilks2_score_target",
+        "area": "Scores",
+        "item": "Wilks-2 Score (target)",
+        "description": "Target Wilks-2 (2020) score",
+        "measurement_type": "Wilks-2",
+        "sql_type": "REAL",
+        "configured_in_settings": True,
+        "read_from_new_date_entry": False,
+        "is_config": True,
+        "storage": "app_settings",
+    },
+    {
+        "column": "ipf_gl_points_target",
+        "area": "Scores",
+        "item": "IPF GL Points (target)",
+        "description": "Target IPF GL Points (classic raw, 2020 coefficients)",
+        "measurement_type": "GL Points",
+        "sql_type": "REAL",
+        "configured_in_settings": True,
+        "read_from_new_date_entry": False,
+        "is_config": True,
+        "storage": "app_settings",
+    },
+]
+
+
 def build_manifest(rows):
     columns = []
     seen = set()
@@ -157,7 +204,7 @@ def build_sql(columns):
 
 def main():
     rows = load_rows()
-    columns = build_manifest(rows)
+    columns = build_manifest(rows) + EXTRA_CONFIG_COLUMNS
     MANIFEST_OUT.write_text(json.dumps({"source": "v1", "columns": columns}, indent=2) + "\n")
     SQL_OUT.write_text(build_sql(columns))
     entry_count = sum(1 for c in columns if c["storage"] == "entries")

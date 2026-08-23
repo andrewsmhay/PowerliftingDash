@@ -24,13 +24,13 @@
         </div>
 
         <div class="field-group">
-            <label for="lifter_sex">Sex (for DOTS score)</label>
+            <label for="lifter_sex">Sex (for DOTS, Wilks-2 and IPF GL scores)</label>
             <select id="lifter_sex" name="lifter_sex">
                 <option value="" {% if not settings.lifter_sex %}selected{% endif %}>Not set</option>
                 <option value="male" {% if settings.lifter_sex == 'male' %}selected{% endif %}>Male</option>
                 <option value="female" {% if settings.lifter_sex == 'female' %}selected{% endif %}>Female</option>
             </select>
-            <div class="hint">Only used to calculate the DOTS score.</div>
+            <div class="hint">Only used to calculate the DOTS, Wilks-2 and IPF GL Points scores.</div>
         </div>
 
         <div class="field-group">

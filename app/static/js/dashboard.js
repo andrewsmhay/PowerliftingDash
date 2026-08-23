@@ -113,18 +113,41 @@
       '<div class="card-meta"><span>Latest Google Health sync</span></div></div>';
   }
 
+  const SCORE_DATA_KEYS = {
+    "score.dots": "dots_score",
+    "score.wilks2": "wilks2_score",
+    "score.ipf_gl": "ipf_gl_score",
+  };
+
+  function scoreCardHtml(widgetId, data) {
+    const score = data[SCORE_DATA_KEYS[widgetId]] || {};
+    const label = score.label || widgetLabel(widgetId);
+    const unit = score.unit || "";
+    if (score.reason === "sex_not_configured") {
+      return '<div class="card"><div class="card-label">' + label + '</div><div class="card-value">' +
+        valueHtml(null, unit) + '</div><div class="card-meta"><span>Configure sex in Settings to calculate this.</span></div></div>';
+    }
+    const pct = score.progress_pct === null || score.progress_pct === undefined ? 0 : score.progress_pct;
+    const progressHtml = '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%"></div></div>';
+    const pctLabelHtml = pctOfTargetHtml(score.target_attainment_pct);
+    const metaHtml = '<div class="card-meta"><span>Target <strong>' + (fmt(score.target) ?? "Not set") + " " + unit + '</strong></span>' +
+      '<span>Remaining <strong>' + (fmt(score.remaining) ?? "Not set") + " " + unit + "</strong></span></div>";
+    const delta = score.delta_from_last_entry;
+    let deltaHtml = "";
+    if (delta !== null && delta !== undefined) {
+      const cls = delta >= 0 ? "positive" : "negative";
+      const sign = delta >= 0 ? "+" : "";
+      deltaHtml = '<span class="delta-pill ' + cls + '">' + sign + fmt(delta) + " " + unit + " vs last entry</span>";
+    }
+    return '<div class="card"><div class="card-label">' + label + '</div><div class="card-value">' +
+      valueHtml(score.value, unit ? " " + unit : "", 1) + "</div>" +
+      progressHtml + pctLabelHtml + metaHtml + deltaHtml + "</div>";
+  }
+
   function analyticsCardHtml(widgetId, data) {
     const parts = widgetId.split(".");
     const type = parts[0];
     const lift = parts[1].replace("_bw", "");
-    if (type === "score") {
-      const score = data.dots_score || {};
-      const hint = score.reason === "sex_not_configured"
-        ? '<div class="card-meta"><span>Configure sex in Settings to calculate this.</span></div>'
-        : "";
-      return '<div class="card"><div class="card-label">DOTS Score</div><div class="card-value">' +
-        valueHtml(score.value, score.unit ? " " + score.unit : "", 1) + "</div>" + hint + "</div>";
-    }
     if (type === "ratio") {
       const ratio = (data.ratios || {})[lift] || {};
       const text = ratio.value === null || ratio.value === undefined
@@ -282,7 +305,7 @@
     body_card: (widgetId, data) => bodyCardHtml((data.body_cards || []).find((item) => item.id === widgetId) || { label: widgetLabel(widgetId), unit: "kg" }),
     index_card: (widgetId, data) => indexCardHtml((data.index_cards || []).find((item) => item.id === widgetId) || { label: widgetLabel(widgetId), unit: "" }),
     health_card: healthCardHtml,
-    dots_card: analyticsCardHtml,
+    score_card: scoreCardHtml,
     ratio_card: analyticsCardHtml,
     rate_card: analyticsCardHtml,
   };
