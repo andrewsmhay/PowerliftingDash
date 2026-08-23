@@ -11,6 +11,7 @@ from app.analytics import (
     WILKS2_COEFFICIENTS,
     compute_dots_score,
     compute_ipf_gl_score,
+    compute_pr_intervals,
     compute_projected_date,
     compute_rate_of_change,
     compute_ratio,
@@ -125,3 +126,79 @@ def test_compute_projected_date_returns_all_states():
     assert compute_projected_date(150, 160, -1, today) == {"state": "not_on_track"}
     assert compute_projected_date(150, 160, 0.01, today) == {"state": "too_far", "years": 19.2}
     assert compute_projected_date(150, 160, 5, today) == {"state": "projected", "date": "2026-09-05"}
+
+
+def test_compute_pr_intervals_with_empty_history_returns_empty_shape():
+    today = date(2026, 8, 22)
+    assert compute_pr_intervals([], "squat", today) == {
+        "pr_count": 0, "avg_days_between_prs": None, "days_since_last_pr": None,
+        "last_pr_date": None, "last_pr_value": None,
+    }
+
+
+def test_compute_pr_intervals_with_single_point_has_no_pr_yet():
+    today = date(2026, 8, 22)
+    history = [{"entry_date": "2026-01-01", "squat": 100}]
+    result = compute_pr_intervals(history, "squat", today)
+    assert result["pr_count"] == 0
+    assert result["avg_days_between_prs"] is None
+    assert result["last_pr_date"] is None
+
+
+def test_compute_pr_intervals_treats_first_point_as_baseline_not_a_pr():
+    today = date(2026, 8, 22)
+    # A history that opens on a high number, then only ever matches or dips
+    # below it, should never register a PR - the baseline itself doesn't count.
+    history = [
+        {"entry_date": "2026-01-01", "squat": 150},
+        {"entry_date": "2026-03-01", "squat": 150},
+        {"entry_date": "2026-06-01", "squat": 140},
+    ]
+    result = compute_pr_intervals(history, "squat", today)
+    assert result["pr_count"] == 0
+    assert result["avg_days_between_prs"] is None
+
+
+def test_compute_pr_intervals_with_single_pr_has_no_average_yet():
+    today = date(2026, 8, 22)
+    history = [
+        {"entry_date": "2026-01-01", "squat": 100},
+        {"entry_date": "2026-02-01", "squat": 110},
+    ]
+    result = compute_pr_intervals(history, "squat", today)
+    assert result["pr_count"] == 1
+    assert result["avg_days_between_prs"] is None
+    assert result["last_pr_value"] == 110
+    assert result["last_pr_date"] == "2026-02-01"
+    assert result["days_since_last_pr"] == (today - date(2026, 2, 1)).days
+
+
+def test_compute_pr_intervals_averages_the_span_across_multiple_genuine_prs():
+    today = date(2026, 8, 22)
+    history = [
+        {"entry_date": "2026-01-01", "squat": 100},
+        {"entry_date": "2026-02-01", "squat": 110},
+        {"entry_date": "2026-02-15", "squat": 105},  # dip - not a PR
+        {"entry_date": "2026-04-01", "squat": 120},
+        {"entry_date": "2026-07-01", "squat": 130},
+    ]
+    result = compute_pr_intervals(history, "squat", today)
+    assert result["pr_count"] == 3
+    first_pr, last_pr = date(2026, 2, 1), date(2026, 7, 1)
+    expected_avg = round((last_pr - first_pr).days / 2, 1)
+    assert result["avg_days_between_prs"] == expected_avg
+    assert result["last_pr_value"] == 130
+    assert result["last_pr_date"] == "2026-07-01"
+    assert result["days_since_last_pr"] == (today - last_pr).days
+
+
+def test_compute_pr_intervals_ignores_rows_missing_the_requested_lift():
+    today = date(2026, 8, 22)
+    history = [
+        {"entry_date": "2026-01-01", "squat": 100, "bench": None},
+        {"entry_date": "2026-02-01", "squat": None, "bench": 60},
+        {"entry_date": "2026-03-01", "squat": 110, "bench": 65},
+    ]
+    result = compute_pr_intervals(history, "squat", today)
+    assert result["pr_count"] == 1
+    assert result["last_pr_value"] == 110

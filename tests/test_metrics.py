@@ -241,6 +241,36 @@ def test_build_analytics_payload_with_full_data():
     assert payload["ratios"]["squat"] == {"value": 1.78}
     assert payload["rate_of_change"]["bench"] == {"kg_per_week": 5.0}
     assert payload["projected_dates"]["deadlift"]["state"] == "projected"
+    # No full_history_asc was passed, so pr_intervals falls back to the windowed
+    # history - one genuine PR (160 after the 150 baseline), so no average yet.
+    assert payload["pr_intervals"]["squat"]["pr_count"] == 1
+    assert payload["pr_intervals"]["squat"]["avg_days_between_prs"] is None
+
+
+def test_build_analytics_payload_pr_intervals_use_full_history_when_provided():
+    from datetime import date
+    from app.metrics import build_analytics_payload
+
+    windowed_history = [
+        {"entry_date": "2026-08-01", "squat": 150.0},
+        {"entry_date": "2026-08-15", "squat": 160.0},
+    ]
+    full_history = [
+        {"entry_date": "2026-01-01", "squat": 100.0},
+        {"entry_date": "2026-03-01", "squat": 130.0},
+    ] + windowed_history
+
+    payload = build_analytics_payload(
+        {},
+        {},
+        {},
+        windowed_history,
+        full_history_asc=full_history,
+        today=date(2026, 8, 22),
+    )
+    # Full history has 3 genuine PRs (130, 150, 160) vs. just 1 in the window.
+    assert payload["pr_intervals"]["squat"]["pr_count"] == 3
+    assert payload["pr_intervals"]["squat"]["avg_days_between_prs"] is not None
 
 
 def test_build_analytics_payload_with_no_data():

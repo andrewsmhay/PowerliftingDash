@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit competition" if editing else "Log a competition" }} - Powerlifting Dashboard{% endblock %}
+{% block content %}
+<div class="settings-wrap">
+    <a class="back-link" href="/competitions">&larr; Back to competition history</a>
+    <h1>{{ "Edit competition" if editing else "Log a competition" }}</h1>
+    <p class="lead">
+        Record an actual meet result. Total is pre-filled from Squat + Bench + Deadlift as you type,
+        but stays editable - overwrite it if a lift was bombed out or a result needs a manual
+        correction.
+    </p>
+
+    <form id="competition-form" data-mode="{{ 'edit' if editing else 'create' }}" data-competition-id="{{ competition_id or '' }}">
+        <div class="field-group">
+            <label for="competition_date">Date</label>
+            <input type="text" id="competition_date" name="competition_date"
+                   value="{{ meet.competition_date or '' }}"
+                   pattern="\d{1,2}/\d{1,2}/\d{4}" placeholder="dd/mm/yyyy" required>
+            <div class="hint">dd/mm/yyyy.</div>
+        </div>
+
+        <div class="entry-field-grid">
+            <div class="field-group">
+                <label for="meet_name">Meet name</label>
+                <input type="text" id="meet_name" name="meet_name" value="{{ meet.meet_name or '' }}" placeholder="e.g. Ontario Provincials">
+            </div>
+            <div class="field-group">
+                <label for="federation">Federation</label>
+                <input type="text" id="federation" name="federation" value="{{ meet.federation or '' }}" placeholder="e.g. CPU, IPF, USAPL">
+            </div>
+            <div class="field-group">
+                <label for="location">Location</label>
+                <input type="text" id="location" name="location" value="{{ meet.location or '' }}" placeholder="e.g. Ottawa, ON">
+            </div>
+            <div class="field-group">
+                <label for="weight_class">Weight class</label>
+                <input type="text" id="weight_class" name="weight_class" value="{{ meet.weight_class or '' }}" placeholder="e.g. 93kg">
+            </div>
+            <div class="field-group">
+                <label for="placing">Placing</label>
+                <input type="text" id="placing" name="placing" value="{{ meet.placing or '' }}" placeholder="e.g. 1st">
+            </div>
+            <div class="field-group">
+                <label for="bodyweight_kg">Bodyweight (weigh-in)</label>
+                <input type="number" step="any" id="bodyweight_kg" name="bodyweight_kg" value="{{ meet.bodyweight_kg if meet.bodyweight_kg is not none else '' }}" placeholder="kg">
+            </div>
+        </div>
+
+        <div class="section-label" style="margin-top:30px;">Lifts</div>
+        <div class="entry-field-grid">
+            <div class="field-group">
+                <label for="squat_kg">Squat</label>
+                <input type="number" step="any" id="squat_kg" name="squat_kg" value="{{ meet.squat_kg if meet.squat_kg is not none else '' }}" placeholder="kg">
+            </div>
+            <div class="field-group">
+                <label for="bench_kg">Bench</label>
+                <input type="number" step="any" id="bench_kg" name="bench_kg" value="{{ meet.bench_kg if meet.bench_kg is not none else '' }}" placeholder="kg">
+            </div>
+            <div class="field-group">
+                <label for="deadlift_kg">Deadlift</label>
+                <input type="number" step="any" id="deadlift_kg" name="deadlift_kg" value="{{ meet.deadlift_kg if meet.deadlift_kg is not none else '' }}" placeholder="kg">
+            </div>
+            <div class="field-group">
+                <label for="total_kg">Total</label>
+                <input type="number" step="any" id="total_kg" name="total_kg" value="{{ meet.total_kg if meet.total_kg is not none else '' }}" placeholder="kg">
+                <div class="hint">Auto-fills from the three lifts above; edit directly to override.</div>
+            </div>
+        </div>
+
+        <div class="field-group" style="margin-top:20px;">
+            <label for="notes">Notes</label>
+            <textarea id="notes" name="notes" placeholder="Attempt notes, conditions, anything worth remembering">{{ meet.notes or '' }}</textarea>
+        </div>
+
+        <button type="submit" class="btn">{{ "Save changes" if editing else "Save competition" }}</button>
+        {% if editing %}
+        <button type="button" class="btn secondary danger" id="delete-competition-btn">Delete this competition</button>
+        {% endif %}
+        <div id="save-status"></div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/competition_form.js"></script>
+{% endblock %}

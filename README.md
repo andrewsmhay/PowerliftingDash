@@ -33,6 +33,17 @@ run full screen on a monitor (kiosk-style).
   your personal-best squat/bench/deadlift/total directly from your public
   openpowerlifting.org profile - see "OpenPowerlifting personal bests"
   below.
+- **Competition history:** actual meet results (federation, meet name,
+  location, placing, bodyweight, lift attempts, total) are logged
+  separately from day-to-day training entries on the **Competitions**
+  page (`/competitions`), since a meet result is a one-off record rather
+  than something you edit every session. Each row shows its own DOTS,
+  Wilks-2 and IPF GL score, calculated from that meet's own bodyweight
+  rather than your current one.
+- **PR pace:** the Analytics screen shows average days between personal
+  records for squat, bench and deadlift, alongside the date of the most
+  recent PR and days since, so plateaus and breakthroughs are visible over
+  a longer horizon than the week-to-week rate-of-change widgets.
 
 ## Screenshots
 
@@ -67,6 +78,21 @@ set once rather than typed in with every dated entry:
 personal bests, timezone, entry count, and the danger zone:
 
 ![Settings page](docs/screenshots/settings.png)
+
+**Competition history** - actual meet results, kept separate from training
+entries, each scored with its own bodyweight:
+
+![Competition history page](docs/screenshots/competitions_list.png)
+
+**Log a competition** - total auto-fills from squat, bench and deadlift but
+stays editable for a bombed attempt or manual correction:
+
+![Log a competition form](docs/screenshots/competition_form.png)
+
+**Analytics with PR pace** - average days between personal records for each
+lift, alongside the score widgets:
+
+![Analytics screen with PR pace widgets](docs/screenshots/dashboard_analytics_pr_pace.png)
 
 ## How the schema was built
 
@@ -387,8 +413,8 @@ app/
   openpowerlifting.py Fetches personal bests from openpowerlifting.org
   google_health.py   OAuth and data normalisation for Google Health
   metrics.py         Raw entry row + config -> dashboard card/chart payload
-  routes/            Page routes (dashboard, entries, targets, settings) and JSON API
-  templates/         Jinja2 templates (dashboard, entry_form, entries_list, targets, settings)
+  routes/            Page routes (dashboard, entries, targets, settings, competitions) and JSON API
+  templates/         Jinja2 templates (dashboard, entry_form, entries_list, targets, settings, competitions_list, competition_form)
   static/            CSS, JS, vendored Chart.js
   schema.sql, schema_manifest.json   Generated - do not hand-edit
 schema/

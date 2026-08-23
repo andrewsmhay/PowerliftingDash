@@ -34,11 +34,12 @@ def dashboard_data():
             pass
     latest = db.get_latest_entry()
     history = db.get_entries(limit=180)
+    full_history = db.get_all_entries_asc()
     app_config = db.get_config()
     settings = db.get_settings()
     health_metrics = db.get_health_metrics(limit=180)
     payload = metrics.build_dashboard_payload(
-        latest, history, app_config, settings, health_metrics
+        latest, history, app_config, settings, health_metrics, full_history=full_history
     )
     payload["entry_count"] = db.count_entries()
     payload["latest_health_metric"] = db.get_latest_health_metric()

@@ -12,9 +12,12 @@ router = APIRouter()
 def dashboard(request: Request):
     latest = db.get_latest_entry()
     history = db.get_entries(limit=180)
+    full_history = db.get_all_entries_asc()
     app_config = db.get_config()
     settings = db.get_settings()
-    payload = metrics.build_dashboard_payload(latest, history, app_config, settings)
+    payload = metrics.build_dashboard_payload(
+        latest, history, app_config, settings, full_history=full_history
+    )
     payload["entry_count"] = db.count_entries()
     payload["latest_health_metric"] = db.get_latest_health_metric()
     return request.app.state.templates.TemplateResponse(

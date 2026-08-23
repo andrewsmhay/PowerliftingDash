@@ -53,6 +53,7 @@ def init_db() -> None:
     _ensure_config_columns()
     _ensure_settings_columns()
     _ensure_health_metrics_table()
+    _ensure_competitions_table()
     _backfill_config_from_latest_entry()
 
 
@@ -154,6 +155,38 @@ def _ensure_health_metrics_table() -> None:
                 synced_at TEXT NOT NULL
             );
             CREATE INDEX IF NOT EXISTS idx_health_metrics_date ON health_metrics(entry_date);
+            """
+        )
+
+
+def _ensure_competitions_table() -> None:
+    """Creates the meet history log: a distinct table from `entries`, since a
+    competition result (federation, placing, meet total) is a one-off event
+    rather than a dated training reading. Uses its own UUID id (not
+    competition_date) as the primary key so, unlike `entries`, more than one
+    row could in principle share a date without conflict.
+    """
+    with connection() as conn:
+        conn.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS competitions (
+                id TEXT PRIMARY KEY,
+                competition_date TEXT NOT NULL,
+                meet_name TEXT,
+                federation TEXT,
+                location TEXT,
+                weight_class TEXT,
+                placing TEXT,
+                bodyweight_kg REAL,
+                squat_kg REAL,
+                bench_kg REAL,
+                deadlift_kg REAL,
+                total_kg REAL,
+                notes TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_competitions_date ON competitions(competition_date);
             """
         )
 
@@ -504,3 +537,75 @@ def delete_all_entries() -> int:
     with connection() as conn:
         cur = conn.execute("DELETE FROM entries")
         return cur.rowcount
+
+
+COMPETITION_COLUMNS = [
+    "meet_name", "federation", "location", "weight_class", "placing",
+    "bodyweight_kg", "squat_kg", "bench_kg", "deadlift_kg", "total_kg", "notes",
+]
+
+
+def insert_competition(competition_date_iso: str, values: dict) -> str:
+    """Inserts a new meet result row. Returns the row's UUID."""
+    import uuid
+
+    now = datetime.now(timezone.utc).isoformat()
+    competition_id = str(uuid.uuid4())
+    safe_values = {c: values.get(c) for c in COMPETITION_COLUMNS}
+    col_list = ", ".join(COMPETITION_COLUMNS)
+    placeholders = ", ".join("?" for _ in COMPETITION_COLUMNS)
+    with connection() as conn:
+        conn.execute(
+            f"INSERT INTO competitions "
+            f"(id, competition_date, created_at, updated_at, {col_list}) "
+            f"VALUES (?, ?, ?, ?, {placeholders})",
+            [competition_id, competition_date_iso, now, now, *safe_values.values()],
+        )
+    return competition_id
+
+
+def update_competition_full(competition_id: str, competition_date_iso: str, values: dict) -> None:
+    """Edit-mode update for a specific meet (by id). Treats `values` as the
+    full, authoritative state of every field: anything not present is
+    written as NULL, so clearing a field on the edit screen and saving
+    actually clears it. Also allows moving the meet to a different date.
+    """
+    now = datetime.now(timezone.utc).isoformat()
+    safe_values = {c: values.get(c) for c in COMPETITION_COLUMNS}
+    set_clause = ", ".join(f"{c} = ?" for c in safe_values)
+    with connection() as conn:
+        conn.execute(
+            f"UPDATE competitions SET competition_date = ?, {set_clause}, updated_at = ? "
+            "WHERE id = ?",
+            [competition_date_iso, *safe_values.values(), now, competition_id],
+        )
+
+
+def get_all_competitions_desc() -> list[dict]:
+    """Every meet result, most recent first - used by the /competitions list."""
+    with connection() as conn:
+        rows = conn.execute(
+            "SELECT * FROM competitions ORDER BY competition_date DESC, created_at DESC"
+        ).fetchall()
+    return rows
+
+
+def get_competition_by_id(competition_id: str) -> dict | None:
+    with connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM competitions WHERE id = ?", (competition_id,)
+        ).fetchone()
+        return row
+
+
+def count_competitions() -> int:
+    with connection() as conn:
+        row = conn.execute("SELECT COUNT(*) AS n FROM competitions").fetchone()
+    return row["n"] if row else 0
+
+
+def delete_competition(competition_id: str) -> bool:
+    """Deletes a single meet result by id. Returns True if a row was removed."""
+    with connection() as conn:
+        cur = conn.execute("DELETE FROM competitions WHERE id = ?", (competition_id,))
+        return cur.rowcount > 0

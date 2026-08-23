@@ -5,6 +5,7 @@ from . import config as runtime_config
 from .analytics import (
     compute_dots_score,
     compute_ipf_gl_score,
+    compute_pr_intervals,
     compute_projected_date,
     compute_rate_of_change,
     compute_ratio,
@@ -268,13 +269,22 @@ def build_analytics_payload(
     dashboard_config: dict | None,
     settings: dict | None,
     history_asc: list[dict],
+    full_history_asc: list[dict] | None = None,
     today=None,
 ) -> dict:
-    """Builds analytics data from an entry, configured goals, and one history list."""
+    """Builds analytics data from an entry, configured goals, and one history
+    list. `full_history_asc` feeds `pr_intervals`: unlike the rate-of-change
+    and chart figures, which intentionally look at the recent
+    `history_asc` window, PR pace needs the athlete's entire logged history
+    to measure genuine long-horizon breakthroughs. Callers that only have
+    the windowed history (e.g. existing tests) may omit it, in which case
+    the window is reused and PR pace is simply computed over less data.
+    """
     entry = entry or {}
     dashboard_config = dashboard_config or {}
     settings = settings or {}
     today = today or datetime.now(timezone.utc).date()
+    full_history_asc = history_asc if full_history_asc is None else full_history_asc
     bodyweight = _safe(entry.get("body_weight_mass"))
     rates = {
         lift["key"]: compute_rate_of_change(
@@ -283,6 +293,10 @@ def build_analytics_payload(
             runtime_config.RATE_OF_CHANGE_WINDOW_DAYS,
             today,
         )
+        for lift in LIFTS
+    }
+    pr_intervals = {
+        lift["key"]: compute_pr_intervals(full_history_asc, lift["key"], today)
         for lift in LIFTS
     }
     score_cards = _build_score_cards(
@@ -310,6 +324,7 @@ def build_analytics_payload(
             )
             for lift in LIFTS
         },
+        "pr_intervals": pr_intervals,
     }
 
 
@@ -319,14 +334,22 @@ def build_dashboard_payload(
     dashboard_config: dict | None = None,
     settings: dict | None = None,
     health_metrics: list[dict] | None = None,
+    full_history: list[dict] | None = None,
 ) -> dict:
-    """Returns all dynamic dashboard values without doing database access."""
+    """Returns all dynamic dashboard values without doing database access.
+
+    `full_history` should be every entry ever logged (oldest first), not
+    just the `history` window, so PR pace reflects the athlete's whole
+    logged career. Routes must pass it explicitly - see routes/pages.py
+    and routes/api.py, which both fetch it via db.get_all_entries_asc().
+    """
     dashboard_config = dashboard_config or {}
     settings = settings or {}
     history_payload = _history_payload(history)
+    full_history_payload = _history_payload(full_history) if full_history is not None else None
     health_metrics = health_metrics or []
     analytics = build_analytics_payload(
-        latest_entry, dashboard_config, settings, history_payload
+        latest_entry, dashboard_config, settings, history_payload, full_history_payload
     )
     return {
         "latest_entry_date": (latest_entry or {}).get("entry_date"),

@@ -176,6 +176,30 @@
       '<div class="pb-row">Projected target date <strong>' + projectionText + "</strong></div></div>";
   }
 
+  const PR_INTERVAL_DATA_KEYS = {
+    "pr_interval.squat": "squat",
+    "pr_interval.bench": "bench",
+    "pr_interval.deadlift": "deadlift",
+  };
+
+  function prIntervalCardHtml(widgetId, data) {
+    const lift = PR_INTERVAL_DATA_KEYS[widgetId];
+    const interval = (data.pr_intervals || {})[lift] || {};
+    const label = widgetLabel(widgetId);
+    if (interval.avg_days_between_prs === null || interval.avg_days_between_prs === undefined) {
+      const metaText = interval.pr_count === 1
+        ? "One PR recorded - log another to see a pace."
+        : "Not enough PR history yet.";
+      return '<div class="card"><div class="card-label">' + label + '</div><div class="card-value">' +
+        '<span class="empty">No data</span></div><div class="card-meta"><span>' + metaText + '</span></div></div>';
+    }
+    const daysSince = interval.days_since_last_pr;
+    const metaHtml = '<div class="card-meta"><span>Last PR <strong>' + ukDate(interval.last_pr_date) + '</strong></span>' +
+      '<span>Days since <strong>' + (daysSince === null || daysSince === undefined ? "-" : daysSince) + '</strong></span></div>';
+    return '<div class="card"><div class="card-label">' + label + '</div><div class="card-value">' +
+      fmt(interval.avg_days_between_prs, 0) + '<span class="unit"> days</span></div>' + metaHtml + '</div>';
+  }
+
   function ukDate(isoDate) {
     if (!isoDate) return "No data";
     const parts = isoDate.split("-");
@@ -308,6 +332,7 @@
     score_card: scoreCardHtml,
     ratio_card: analyticsCardHtml,
     rate_card: analyticsCardHtml,
+    pr_interval_card: prIntervalCardHtml,
   };
 
   const chartRenderers = {

@@ -128,6 +128,58 @@ def compute_rate_of_change(history_asc: list[dict], key: str, window_days: int, 
     return {"kg_per_week": round(covariance / variance * 7, 2)}
 
 
+def compute_pr_intervals(history_asc: list[dict], key: str, today: date):
+    """Measures how often genuine breakthroughs happen for one lift.
+
+    The first recorded value is treated as a baseline, not a PR - only
+    strict increases after it count as a PR event, matching the pr_timeline
+    chart's `> runningMax` strictness for every point after the first (the
+    chart also highlights the first point itself as a visual starting
+    marker, which this deliberately does not count, so a history that opens
+    on a high number doesn't inflate the average pace with a trivial "PR").
+
+    Returns pr_count (genuine PR events after the baseline),
+    avg_days_between_prs (None until at least two genuine PRs exist),
+    days_since_last_pr, last_pr_date (ISO) and last_pr_value.
+    """
+    empty = {
+        "pr_count": 0, "avg_days_between_prs": None, "days_since_last_pr": None,
+        "last_pr_date": None, "last_pr_value": None,
+    }
+    points = [
+        (date.fromisoformat(row["entry_date"]), row[key])
+        for row in history_asc
+        if row.get(key) is not None
+    ]
+    if not points:
+        return dict(empty)
+
+    running_max = points[0][1]
+    pr_dates = []
+    pr_values = []
+    for point_date, value in points[1:]:
+        if value > running_max:
+            pr_dates.append(point_date)
+            pr_values.append(value)
+            running_max = value
+
+    if not pr_dates:
+        return dict(empty)
+
+    avg_days_between_prs = None
+    if len(pr_dates) >= 2:
+        span_days = (pr_dates[-1] - pr_dates[0]).days
+        avg_days_between_prs = round(span_days / (len(pr_dates) - 1), 1)
+
+    return {
+        "pr_count": len(pr_dates),
+        "avg_days_between_prs": avg_days_between_prs,
+        "days_since_last_pr": (today - pr_dates[-1]).days,
+        "last_pr_date": pr_dates[-1].isoformat(),
+        "last_pr_value": pr_values[-1],
+    }
+
+
 def compute_projected_date(current, target, kg_per_week, today: date):
     """Returns the target projection state for a current lift and trend."""
     if current is None or target is None:

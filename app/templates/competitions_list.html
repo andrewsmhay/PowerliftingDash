@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Competition history - Powerlifting Dashboard{% endblock %}
+{% block content %}
+<div class="settings-wrap" style="max-width:1500px;">
+    <a class="back-link" href="/">&larr; Back to dashboard</a>
+    <h1>Competition history</h1>
+    <p class="lead">
+        Your meet-by-meet results, newest first - kept separate from day-to-day training entries so
+        this shows real competition progression rather than gym PRs. Scores use each meet's own
+        bodyweight, not your current one.
+        {% if not sex_configured %}Configure sex in <a href="/settings">Settings</a> to see DOTS,
+        Wilks-2 and IPF GL Points for each meet.{% endif %}
+    </p>
+
+    <a class="btn" href="/competitions/new" style="display:inline-block; text-decoration:none; margin-bottom:20px;">+ Log a competition</a>
+
+    {% if not meets %}
+    <div class="empty-state">No competitions logged yet. <a href="/competitions/new">Log your first result</a>.</div>
+    {% else %}
+    <div class="table-wrap">
+        <table class="entries-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Meet</th>
+                    <th>Federation</th>
+                    <th>Weight class</th>
+                    <th>Placing</th>
+                    <th>Bodyweight</th>
+                    <th>Squat</th>
+                    <th>Bench</th>
+                    <th>Deadlift</th>
+                    <th>Total</th>
+                    <th>DOTS</th>
+                    <th>Wilks-2</th>
+                    <th>IPF GL</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for meet in meets %}
+                <tr>
+                    <td>{{ meet.display_date }}</td>
+                    <td>{{ meet.meet_name or "-" }}</td>
+                    <td>{{ meet.federation or "-" }}</td>
+                    <td>{{ meet.weight_class or "-" }}</td>
+                    <td>{{ meet.placing or "-" }}</td>
+                    <td>{{ meet.bodyweight_kg if meet.bodyweight_kg is not none else "-" }}</td>
+                    <td>{{ meet.squat_kg if meet.squat_kg is not none else "-" }}</td>
+                    <td>{{ meet.bench_kg if meet.bench_kg is not none else "-" }}</td>
+                    <td>{{ meet.deadlift_kg if meet.deadlift_kg is not none else "-" }}</td>
+                    <td>{{ meet.total_kg if meet.total_kg is not none else "-" }}</td>
+                    <td>{{ meet.scores.dots.value if meet.scores.dots.value is not none else "-" }}</td>
+                    <td>{{ meet.scores.wilks2.value if meet.scores.wilks2.value is not none else "-" }}</td>
+                    <td>{{ meet.scores.ipf_gl.value if meet.scores.ipf_gl.value is not none else "-" }}</td>
+                    <td><a class="nav-link" href="/competitions/{{ meet.id }}/edit">Edit</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="info-box" style="margin-top:20px;">
+        {{ meets|length }} competition{{ "" if meets|length == 1 else "s" }} logged.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
