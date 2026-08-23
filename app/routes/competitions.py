@@ -16,6 +16,7 @@ from .. import db
 from ..analytics import compute_dots_score, compute_ipf_gl_score, compute_wilks2_score
 from ..date_utils import DateParseError, parse_entry_date, to_ddmmyyyy, to_iso
 from ..numeric import coerce_numeric
+from ..openpowerlifting import FetchError, fetch_competition_history
 
 router = APIRouter()
 
@@ -168,3 +169,49 @@ def delete_competition(competition_id: str):
     if not deleted:
         raise HTTPException(status_code=404, detail="Competition not found")
     return {"ok": True}
+
+
+def _sync_dedup_key(date_iso: str, meet_name, total_kg) -> tuple:
+    return (date_iso, (meet_name or "").strip().lower(), total_kg)
+
+
+@router.post("/api/competitions/sync-openpowerlifting")
+def sync_openpowerlifting_competitions():
+    """Imports meets from the OpenPowerlifting username configured in
+    Settings. Only meets not already logged here are added - matched on
+    date, meet name and total so a manually entered meet, or a meet with
+    edited notes, is never duplicated or overwritten. Existing rows are
+    never touched by this route.
+    """
+    username = (db.get_settings().get("openpowerlifting_username") or "").strip()
+    if not username:
+        raise HTTPException(status_code=400, detail="No OpenPowerlifting username configured.")
+
+    try:
+        fetched = fetch_competition_history(username)
+    except FetchError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    existing = db.get_all_competitions_desc()
+    seen = {
+        _sync_dedup_key(row["competition_date"], row.get("meet_name"), row.get("total_kg"))
+        for row in existing
+    }
+
+    imported_meets = []
+    skipped = 0
+    for meet in fetched:
+        key = _sync_dedup_key(meet["competition_date_iso"], meet.get("meet_name"), meet.get("total_kg"))
+        if key in seen:
+            skipped += 1
+            continue
+        db.insert_competition(meet["competition_date_iso"], meet)
+        seen.add(key)
+        imported_meets.append(meet.get("meet_name") or meet["competition_date_iso"])
+
+    return {
+        "ok": True,
+        "imported": len(imported_meets),
+        "skipped": skipped,
+        "imported_meets": imported_meets,
+    }

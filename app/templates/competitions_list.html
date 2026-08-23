@@ -12,7 +12,16 @@
         Wilks-2 and IPF GL Points for each meet.{% endif %}
     </p>
 
-    <a class="btn" href="/competitions/new" style="display:inline-block; text-decoration:none; margin-bottom:20px;">+ Log a competition</a>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">
+        <a class="btn" href="/competitions/new" style="display:inline-block; text-decoration:none;">+ Log a competition</a>
+        <button type="button" class="btn secondary" id="sync-opl-btn">Sync from OpenPowerlifting</button>
+    </div>
+    <div id="sync-status"></div>
+    <div class="hint" style="margin-bottom:20px;">
+        Sync pulls in meets from your OpenPowerlifting profile that aren't already logged here -
+        matched by date, meet name and total, so edits and notes on existing meets are never
+        overwritten. Set your username on <a href="/settings">Settings</a> first.
+    </div>
 
     {% if not meets %}
     <div class="empty-state">No competitions logged yet. <a href="/competitions/new">Log your first result</a>.</div>
@@ -64,4 +73,8 @@
     </div>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/competitions_list.js"></script>
 {% endblock %}

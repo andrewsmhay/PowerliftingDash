@@ -39,7 +39,10 @@ run full screen on a monitor (kiosk-style).
   page (`/competitions`), since a meet result is a one-off record rather
   than something you edit every session. Each row shows its own DOTS,
   Wilks-2 and IPF GL score, calculated from that meet's own bodyweight
-  rather than your current one.
+  rather than your current one. A **Sync from OpenPowerlifting** button
+  on the same page can pull your full meet-by-meet history straight from
+  your public profile instead of typing every meet in by hand - see
+  "Syncing competition history from OpenPowerlifting" below.
 - **PR pace:** the Analytics screen shows average days between personal
   records for squat, bench and deadlift, alongside the date of the most
   recent PR and days since, so plateaus and breakthroughs are visible over
@@ -242,6 +245,46 @@ Notes and failure modes:
 - Personal bests are always in kilograms, matching every other weight
   figure in the app, and prefer the "Raw" equipment row when a lifter has
   results in more than one equipment category.
+
+## Syncing competition history from OpenPowerlifting
+
+If your meets are already on openpowerlifting.org, you don't have to
+re-type every date, meet name and lift into `/competitions/new` by hand:
+
+1. Set your openpowerlifting.org username on `/settings` (the same one
+   used for personal bests above).
+2. Open `/competitions` and click **Sync from OpenPowerlifting**.
+3. PowerliftingDash fetches your profile's full Competition Results table
+   (`app/openpowerlifting.py::fetch_competition_history()`), not just the
+   best-lifts summary, and posts it to
+   `POST /api/competitions/sync-openpowerlifting`.
+4. Each fetched meet is compared against your existing rows by
+   competition date, meet name and total (case-insensitive on the name).
+   Meets that already match an existing row are skipped; only genuinely
+   new meets are inserted. The button's status line reports how many were
+   imported and how many were already up to date.
+
+Notes and failure modes:
+
+- Sync is additive and read-only towards your existing data: it never
+  updates, overwrites or deletes a competition row you've already logged,
+  even if the OpenPowerlifting figures differ slightly (for example a
+  meet result corrected after the fact). If you want to fix an imported
+  row, edit it on `/competitions` as normal afterwards.
+- If you're entered in more than one division at the same meet on the
+  same date with the same total (for example Open and a Masters age
+  category), both divisions are imported separately, since they're
+  genuinely different results, not duplicates.
+- Disqualified (`DQ`) attempts are imported with a `DQ` placing and blank
+  lift/total figures, matching what OpenPowerlifting itself shows.
+- Like personal bests, sync is a single on-demand `GET` against your
+  public profile, triggered only by clicking the button - there is no
+  background job or scheduled polling.
+- If no username is set, the button returns a `400` telling you to set
+  one on `/settings` first. If the username is wrong, unreachable, or
+  ambiguous, the same disambiguation and "lifter not found" handling used
+  for personal bests applies, and the failure is shown inline rather than
+  silently discarding your click.
 
 ## Google Health integration
 

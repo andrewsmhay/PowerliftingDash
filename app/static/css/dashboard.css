@@ -230,6 +230,10 @@ body.is-fullscreen:not(.dashboard-editing) {
 }
 .field-group textarea { min-height: 110px; resize: vertical; font-family: monospace; font-size: 12.5px; }
 .field-group .hint { color: var(--text-faint); font-size: 12px; margin-top: 6px; }
+.hint { color: var(--text-faint); font-size: 12px; }
+#sync-status { font-size: 13px; color: var(--text-muted); }
+#sync-status.ok { color: var(--success); }
+#sync-status.error { color: var(--error); }
 
 .btn {
   background: var(--primary);

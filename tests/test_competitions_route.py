@@ -202,3 +202,121 @@ def test_dashboard_page_links_to_competitions(monkeypatch):
     resp = client.get("/")
     assert resp.status_code == 200
     assert 'href="/competitions"' in resp.text
+
+
+def test_sync_openpowerlifting_requires_a_configured_username(monkeypatch):
+    client, _ = make_client(monkeypatch)
+    resp = client.post("/api/competitions/sync-openpowerlifting")
+    assert resp.status_code == 400
+
+
+def test_sync_openpowerlifting_returns_502_on_fetch_error(monkeypatch):
+    client, db = make_client(monkeypatch)
+    db.update_settings(openpowerlifting_username="someone")
+
+    from app.openpowerlifting import FetchError
+    from app.routes import competitions
+
+    def _raise(_username):
+        raise FetchError("No openpowerlifting.org lifter found for username 'someone'.")
+
+    monkeypatch.setattr(competitions, "fetch_competition_history", _raise)
+
+    resp = client.post("/api/competitions/sync-openpowerlifting")
+    assert resp.status_code == 502
+    assert "someone" in resp.json()["detail"]
+
+
+def test_sync_openpowerlifting_imports_new_meets_and_skips_duplicates(monkeypatch):
+    client, db = make_client(monkeypatch)
+    db.update_settings(openpowerlifting_username="someone")
+
+    # Already logged manually - same date/name/total as one of the fetched
+    # meets below, so it should be recognised as a duplicate and skipped.
+    client.post(
+        "/api/competitions",
+        json={
+            "competition_date": "14/03/2026",
+            "values": {"meet_name": "Provincials", "total_kg": "620", "notes": "My own notes"},
+        },
+    )
+
+    from app.routes import competitions
+
+    fetched = [
+        {
+            "competition_date_iso": "2026-03-14",
+            "meet_name": "Provincials",
+            "federation": "CPU",
+            "location": "Canada",
+            "weight_class": "93",
+            "placing": "1st",
+            "bodyweight_kg": 91.4,
+            "squat_kg": 220.0,
+            "bench_kg": 150.0,
+            "deadlift_kg": 250.0,
+            "total_kg": 620.0,
+            "notes": "Imported from OpenPowerlifting.",
+        },
+        {
+            "competition_date_iso": "2025-11-01",
+            "meet_name": "Fall Classic",
+            "federation": "CPU",
+            "location": "Canada",
+            "weight_class": "93",
+            "placing": "2nd",
+            "bodyweight_kg": 92.0,
+            "squat_kg": 200.0,
+            "bench_kg": 130.0,
+            "deadlift_kg": 220.0,
+            "total_kg": 550.0,
+            "notes": "Imported from OpenPowerlifting.",
+        },
+    ]
+    monkeypatch.setattr(competitions, "fetch_competition_history", lambda username: fetched)
+
+    resp = client.post("/api/competitions/sync-openpowerlifting")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["ok"] is True
+    assert body["imported"] == 1
+    assert body["skipped"] == 1
+    assert body["imported_meets"] == ["Fall Classic"]
+
+    assert db.count_competitions() == 2
+    provincials = next(m for m in db.get_all_competitions_desc() if m["meet_name"] == "Provincials")
+    # The manually entered row - and its notes - must be untouched by sync.
+    assert provincials["notes"] == "My own notes"
+
+
+def test_sync_openpowerlifting_collapses_same_meet_reported_in_two_divisions(monkeypatch):
+    client, db = make_client(monkeypatch)
+    db.update_settings(openpowerlifting_username="someone")
+
+    from app.routes import competitions
+
+    def _meet(division):
+        return {
+            "competition_date_iso": "2024-03-02",
+            "meet_name": "Classic and Equipped National Championships",
+            "federation": "USVIPF",
+            "location": "US Virgin Islands",
+            "weight_class": "76",
+            "placing": "1st",
+            "bodyweight_kg": 75.5,
+            "squat_kg": 177.5,
+            "bench_kg": 110.0,
+            "deadlift_kg": 240.0,
+            "total_kg": 527.5,
+            "notes": f"Imported from OpenPowerlifting ({division}).",
+        }
+
+    fetched = [_meet("Masters 1"), _meet("Open")]
+    monkeypatch.setattr(competitions, "fetch_competition_history", lambda username: fetched)
+
+    resp = client.post("/api/competitions/sync-openpowerlifting")
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["imported"] == 1
+    assert body["skipped"] == 1
+    assert db.count_competitions() == 1
