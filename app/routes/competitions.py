@@ -14,7 +14,7 @@ from starlette.requests import Request
 
 from .. import db
 from ..analytics import compute_dots_score, compute_ipf_gl_score, compute_wilks2_score
-from ..date_utils import DateParseError, parse_entry_date, to_ddmmyyyy, to_iso
+from ..date_utils import DateParseError, days_until, format_time_until, local_today, parse_entry_date, to_ddmmyyyy, to_iso
 from ..numeric import coerce_numeric
 from ..openpowerlifting import FetchError, fetch_competition_history
 
@@ -55,6 +55,17 @@ def _scores_for(meet: dict, sex: str | None) -> dict:
     }
 
 
+def _countdown_display(countdown: dict, today) -> dict:
+    countdown["display_date"] = to_ddmmyyyy(countdown["event_date"])
+    days = days_until(countdown["event_date"], today)
+    countdown["days_until"] = days
+    countdown["time_until"] = format_time_until(days)
+    countdown["display_location"] = ", ".join(
+        part for part in (countdown.get("city"), countdown.get("region"), countdown.get("country")) if part
+    ) or None
+    return countdown
+
+
 @router.get("/competitions", response_class=HTMLResponse)
 def competitions_list_page(request: Request):
     settings = db.get_settings()
@@ -63,12 +74,23 @@ def competitions_list_page(request: Request):
     for meet in meets:
         meet["display_date"] = to_ddmmyyyy(meet["competition_date"])
         meet["scores"] = _scores_for(meet, sex)
+
+    today = local_today(settings.get("timezone"))
+    upcoming, past = [], []
+    for countdown in db.get_all_countdowns():
+        _countdown_display(countdown, today)
+        (upcoming if countdown["days_until"] >= 0 else past).append(countdown)
+    past.reverse()  # get_all_countdowns() is ascending; most-recently-past first reads better
+
     return request.app.state.templates.TemplateResponse(
         "competitions_list.html",
         {
             "request": request,
             "meets": meets,
             "sex_configured": sex in ("male", "female"),
+            "countdowns_upcoming": upcoming,
+            "countdowns_past": past,
+            "countdown_locations": db.get_all_countdown_locations(),
         },
     )
 

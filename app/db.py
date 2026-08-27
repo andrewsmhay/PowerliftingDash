@@ -54,6 +54,8 @@ def init_db() -> None:
     _ensure_settings_columns()
     _ensure_health_metrics_table()
     _ensure_competitions_table()
+    _ensure_countdowns_table()
+    _ensure_countdown_locations_table()
     _backfill_config_from_latest_entry()
 
 
@@ -187,6 +189,49 @@ def _ensure_competitions_table() -> None:
                 updated_at TEXT NOT NULL
             );
             CREATE INDEX IF NOT EXISTS idx_competitions_date ON competitions(competition_date);
+            """
+        )
+
+
+def _ensure_countdowns_table() -> None:
+    """Creates the manually tracked countdown-to-event table. Kept separate
+    from `competitions`, which is a historical log of actual meet results -
+    a countdown might never happen, later get logged as a real competition,
+    or be a non-competition event with no lifts attached at all.
+    """
+    with connection() as conn:
+        conn.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS countdowns (
+                id TEXT PRIMARY KEY,
+                event_date TEXT NOT NULL,
+                event_name TEXT NOT NULL,
+                country TEXT,
+                region TEXT,
+                city TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_countdowns_date ON countdowns(event_date);
+            """
+        )
+
+
+def _ensure_countdown_locations_table() -> None:
+    """Creates the self-maintained location picklist used by the countdown
+    form's country / province-state / city dropdowns. Andrew adds each
+    location once here; there is no bundled global geography dataset.
+    """
+    with connection() as conn:
+        conn.executescript(
+            """
+            CREATE TABLE IF NOT EXISTS countdown_locations (
+                id TEXT PRIMARY KEY,
+                kind TEXT NOT NULL,
+                value TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_countdown_locations_kind ON countdown_locations(kind);
             """
         )
 
@@ -608,4 +653,118 @@ def delete_competition(competition_id: str) -> bool:
     """Deletes a single meet result by id. Returns True if a row was removed."""
     with connection() as conn:
         cur = conn.execute("DELETE FROM competitions WHERE id = ?", (competition_id,))
+        return cur.rowcount > 0
+
+
+COUNTDOWN_COLUMNS = ["event_name", "country", "region", "city"]
+COUNTDOWN_LOCATION_KINDS = ("country", "region", "city")
+
+
+def insert_countdown(event_date_iso: str, values: dict) -> str:
+    """Inserts a new countdown row. Returns the row's UUID."""
+    import uuid
+
+    now = datetime.now(timezone.utc).isoformat()
+    countdown_id = str(uuid.uuid4())
+    safe_values = {c: values.get(c) for c in COUNTDOWN_COLUMNS}
+    col_list = ", ".join(COUNTDOWN_COLUMNS)
+    placeholders = ", ".join("?" for _ in COUNTDOWN_COLUMNS)
+    with connection() as conn:
+        conn.execute(
+            f"INSERT INTO countdowns "
+            f"(id, event_date, created_at, updated_at, {col_list}) "
+            f"VALUES (?, ?, ?, ?, {placeholders})",
+            [countdown_id, event_date_iso, now, now, *safe_values.values()],
+        )
+    return countdown_id
+
+
+def update_countdown_full(countdown_id: str, event_date_iso: str, values: dict) -> None:
+    """Edit-mode update for a specific countdown (by id). Treats `values` as
+    the full, authoritative state of every field, same convention as
+    `update_competition_full`.
+    """
+    now = datetime.now(timezone.utc).isoformat()
+    safe_values = {c: values.get(c) for c in COUNTDOWN_COLUMNS}
+    set_clause = ", ".join(f"{c} = ?" for c in safe_values)
+    with connection() as conn:
+        conn.execute(
+            f"UPDATE countdowns SET event_date = ?, {set_clause}, updated_at = ? WHERE id = ?",
+            [event_date_iso, *safe_values.values(), now, countdown_id],
+        )
+
+
+def get_all_countdowns() -> list[dict]:
+    """Every countdown, soonest event date first."""
+    with connection() as conn:
+        rows = conn.execute("SELECT * FROM countdowns ORDER BY event_date ASC").fetchall()
+    return rows
+
+
+def get_countdown_by_id(countdown_id: str) -> dict | None:
+    with connection() as conn:
+        row = conn.execute("SELECT * FROM countdowns WHERE id = ?", (countdown_id,)).fetchone()
+        return row
+
+
+def count_countdowns() -> int:
+    with connection() as conn:
+        row = conn.execute("SELECT COUNT(*) AS n FROM countdowns").fetchone()
+    return row["n"] if row else 0
+
+
+def delete_countdown(countdown_id: str) -> bool:
+    """Deletes a single countdown by id. Returns True if a row was removed."""
+    with connection() as conn:
+        cur = conn.execute("DELETE FROM countdowns WHERE id = ?", (countdown_id,))
+        return cur.rowcount > 0
+
+
+def add_countdown_location(kind: str, value: str) -> dict:
+    """Adds a location option to the self-maintained picklist. Case
+    insensitive de-duplication, so 'Canada' and 'canada' don't both end up
+    as separate dropdown entries. Returns the (possibly pre-existing) row.
+    """
+    import uuid
+
+    value = value.strip()
+    now = datetime.now(timezone.utc).isoformat()
+    with connection() as conn:
+        existing = conn.execute(
+            "SELECT id, value FROM countdown_locations WHERE kind = ? AND value = ? COLLATE NOCASE",
+            (kind, value),
+        ).fetchone()
+        if existing:
+            return {"id": existing["id"], "value": existing["value"], "created": False}
+        location_id = str(uuid.uuid4())
+        conn.execute(
+            "INSERT INTO countdown_locations (id, kind, value, created_at) VALUES (?, ?, ?, ?)",
+            (location_id, kind, value, now),
+        )
+        return {"id": location_id, "value": value, "created": True}
+
+
+def get_all_countdown_locations() -> dict:
+    """Returns {'country': [...], 'region': [...], 'city': [...]}, each a
+    list of {'id', 'value'} sorted alphabetically, for the countdown form's
+    dropdowns and the settings-style location manager.
+    """
+    with connection() as conn:
+        rows = conn.execute(
+            "SELECT id, kind, value FROM countdown_locations ORDER BY value COLLATE NOCASE ASC"
+        ).fetchall()
+    result = {kind: [] for kind in COUNTDOWN_LOCATION_KINDS}
+    for row in rows:
+        if row["kind"] in result:
+            result[row["kind"]].append({"id": row["id"], "value": row["value"]})
+    return result
+
+
+def delete_countdown_location(location_id: str) -> bool:
+    """Deletes a location option. Countdowns already using it keep their
+    saved text value untouched, since that value is stored on the countdown
+    row itself rather than as a foreign key.
+    """
+    with connection() as conn:
+        cur = conn.execute("DELETE FROM countdown_locations WHERE id = ?", (location_id,))
         return cur.rowcount > 0

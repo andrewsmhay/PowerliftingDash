@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 
 from .. import config, db, metrics
 from .. import widgets as widget_catalog
-from ..date_utils import DateParseError, parse_entry_date, to_iso
+from ..date_utils import DateParseError, days_until, format_time_until, local_today, parse_entry_date, to_ddmmyyyy, to_iso
 from ..openpowerlifting import FetchError, fetch_personal_bests
 from . import google_health as google_health_routes
 
@@ -43,7 +43,33 @@ def dashboard_data():
     )
     payload["entry_count"] = db.count_entries()
     payload["latest_health_metric"] = db.get_latest_health_metric()
+    payload["countdowns_upcoming"] = _upcoming_countdowns_for_widget(settings)
     return payload
+
+
+def _upcoming_countdowns_for_widget(settings: dict, limit: int = 6) -> dict:
+    """Compact upcoming-only view for the dashboard widget (the full,
+    editable list - including past events - lives on /competitions). Capped
+    at `limit` so the widget never needs to scroll or silently clip rows.
+    """
+    today = local_today(settings.get("timezone"))
+    upcoming = []
+    for countdown in db.get_all_countdowns():
+        days = days_until(countdown["event_date"], today)
+        if days < 0:
+            continue
+        upcoming.append({
+            "id": countdown["id"],
+            "event_name": countdown["event_name"],
+            "display_date": to_ddmmyyyy(countdown["event_date"]),
+            "days_until": days,
+            "time_until": format_time_until(days),
+            "display_location": ", ".join(
+                part for part in (countdown.get("city"), countdown.get("region"), countdown.get("country")) if part
+            ) or None,
+        })
+    upcoming.sort(key=lambda item: item["days_until"])
+    return {"items": upcoming[:limit], "total": len(upcoming)}
 
 
 @router.get("/widgets/catalog")

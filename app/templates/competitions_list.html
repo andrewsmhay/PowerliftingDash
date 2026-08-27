@@ -12,6 +12,142 @@
         Wilks-2 and IPF GL Points for each meet.{% endif %}
     </p>
 
+    <div class="section-label" style="margin-top:0;">Countdowns</div>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:12px;">
+        <button type="button" class="btn" id="add-countdown-btn">+ Add countdown</button>
+        <button type="button" class="btn secondary" id="manage-locations-btn">Manage locations</button>
+    </div>
+
+    <form id="countdown-form" class="info-box" style="display:none; margin-bottom:20px;" data-mode="create" data-editing-id="">
+        <div class="field-group">
+            <label for="event_name">Event name</label>
+            <input type="text" id="event_name" name="event_name" placeholder="e.g. Provincial Championships">
+        </div>
+        <div class="field-group">
+            <label for="event_date">Event date</label>
+            <input type="text" id="event_date" name="event_date" pattern="\d{1,2}/\d{1,2}/\d{4}" placeholder="dd/mm/yyyy">
+        </div>
+        <div style="display:flex; gap:12px; flex-wrap:wrap;">
+            <div class="field-group" style="flex:1; min-width:140px;">
+                <label for="event_country">Country</label>
+                <select id="event_country" name="country">
+                    <option value="">Not set</option>
+                    {% for opt in countdown_locations.country %}
+                    <option value="{{ opt.value }}">{{ opt.value }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field-group" style="flex:1; min-width:140px;">
+                <label for="event_region">Province/State</label>
+                <select id="event_region" name="region">
+                    <option value="">Not set</option>
+                    {% for opt in countdown_locations.region %}
+                    <option value="{{ opt.value }}">{{ opt.value }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="field-group" style="flex:1; min-width:140px;">
+                <label for="event_city">City</label>
+                <select id="event_city" name="city">
+                    <option value="">Not set</option>
+                    {% for opt in countdown_locations.city %}
+                    <option value="{{ opt.value }}">{{ opt.value }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="hint" style="margin-bottom:12px;">
+            No country, province/state or city yet? Add one from "Manage locations" above first.
+        </div>
+        <button type="submit" class="btn" id="countdown-submit-btn">Add countdown</button>
+        <button type="button" class="btn secondary" id="countdown-cancel-btn">Cancel</button>
+        <div id="countdown-status"></div>
+    </form>
+
+    <div id="location-manager" class="info-box" style="display:none; margin-bottom:20px;">
+        <div class="location-kind-block">
+            <div class="section-label">Countries</div>
+            <div class="chip-list" id="chips-country" data-kind="country">
+                {% for opt in countdown_locations.country %}
+                <span class="chip" data-id="{{ opt.id }}" data-value="{{ opt.value }}">{{ opt.value }}<button type="button" class="chip-remove" aria-label="Remove">&times;</button></span>
+                {% endfor %}
+            </div>
+            <div class="location-add-row">
+                <input type="text" class="location-add-input" data-kind="country" placeholder="Add a country">
+                <button type="button" class="btn secondary location-add-btn" data-kind="country">Add</button>
+            </div>
+        </div>
+        <div class="location-kind-block">
+            <div class="section-label">Provinces/States</div>
+            <div class="chip-list" id="chips-region" data-kind="region">
+                {% for opt in countdown_locations.region %}
+                <span class="chip" data-id="{{ opt.id }}" data-value="{{ opt.value }}">{{ opt.value }}<button type="button" class="chip-remove" aria-label="Remove">&times;</button></span>
+                {% endfor %}
+            </div>
+            <div class="location-add-row">
+                <input type="text" class="location-add-input" data-kind="region" placeholder="Add a province/state">
+                <button type="button" class="btn secondary location-add-btn" data-kind="region">Add</button>
+            </div>
+        </div>
+        <div class="location-kind-block">
+            <div class="section-label">Cities</div>
+            <div class="chip-list" id="chips-city" data-kind="city">
+                {% for opt in countdown_locations.city %}
+                <span class="chip" data-id="{{ opt.id }}" data-value="{{ opt.value }}">{{ opt.value }}<button type="button" class="chip-remove" aria-label="Remove">&times;</button></span>
+                {% endfor %}
+            </div>
+            <div class="location-add-row">
+                <input type="text" class="location-add-input" data-kind="city" placeholder="Add a city">
+                <button type="button" class="btn secondary location-add-btn" data-kind="city">Add</button>
+            </div>
+        </div>
+    </div>
+
+    {% if not countdowns_upcoming and not countdowns_past %}
+    <div class="empty-state" style="margin-top:0; margin-bottom:30px;">No countdowns added yet. Use "+ Add countdown" above.</div>
+    {% else %}
+    <div class="table-wrap" style="margin-bottom:30px;">
+        <table class="entries-table">
+            <thead>
+                <tr>
+                    <th>Event</th>
+                    <th>Location</th>
+                    <th>Date</th>
+                    <th>Time until</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for countdown in countdowns_upcoming %}
+                <tr data-id="{{ countdown.id }}" data-event-name="{{ countdown.event_name }}" data-event-date="{{ countdown.display_date }}" data-country="{{ countdown.country or '' }}" data-region="{{ countdown.region or '' }}" data-city="{{ countdown.city or '' }}">
+                    <td>{{ countdown.event_name }}</td>
+                    <td>{{ countdown.display_location or "-" }}</td>
+                    <td>{{ countdown.display_date }}</td>
+                    <td>{{ countdown.time_until }}</td>
+                    <td>
+                        <a class="nav-link countdown-edit-link" href="#">Edit</a>
+                        <a class="nav-link countdown-delete-link" href="#" style="color:var(--error);">Delete</a>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% for countdown in countdowns_past %}
+                <tr style="opacity:0.65;" data-id="{{ countdown.id }}" data-event-name="{{ countdown.event_name }}" data-event-date="{{ countdown.display_date }}" data-country="{{ countdown.country or '' }}" data-region="{{ countdown.region or '' }}" data-city="{{ countdown.city or '' }}">
+                    <td>{{ countdown.event_name }}</td>
+                    <td>{{ countdown.display_location or "-" }}</td>
+                    <td>{{ countdown.display_date }}</td>
+                    <td>{{ countdown.time_until }}</td>
+                    <td>
+                        <a class="nav-link countdown-edit-link" href="#">Edit</a>
+                        <a class="nav-link countdown-delete-link" href="#" style="color:var(--error);">Delete</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <div class="section-label">Competition history</div>
     <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:8px;">
         <a class="btn" href="/competitions/new" style="display:inline-block; text-decoration:none;">+ Log a competition</a>
         <button type="button" class="btn secondary" id="sync-opl-btn">Sync from OpenPowerlifting</button>
@@ -77,4 +213,5 @@
 
 {% block scripts %}
 <script src="/static/js/competitions_list.js"></script>
+<script src="/static/js/countdowns.js"></script>
 {% endblock %}

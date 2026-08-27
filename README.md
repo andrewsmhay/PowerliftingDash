@@ -47,6 +47,12 @@ run full screen on a monitor (kiosk-style).
   records for squat, bench and deadlift, alongside the date of the most
   recent PR and days since, so plateaus and breakthroughs are visible over
   a longer horizon than the week-to-week rate-of-change widgets.
+- **Event countdowns:** upcoming meets, camps or trials can be logged with a
+  name, date and optional location on the **Competitions** page
+  (`/competitions`), separate from actual results since a countdown is
+  planned ahead of time rather than logged after the fact. A dedicated
+  **Countdowns** dashboard screen shows the next few events at a glance -
+  see "Event countdowns" below.
 
 ## Screenshots
 
@@ -286,6 +292,33 @@ Notes and failure modes:
   for personal bests applies, and the failure is shown inline rather than
   silently discarding your click.
 
+## Event countdowns
+
+Above the competition history table on `/competitions` is a **Countdowns**
+section for events that haven't happened yet - a national qualifier, a
+training camp, a trial, anything worth watching the clock for.
+
+- **Add a countdown:** click **+ Add countdown** and fill in an event name
+  and date (`dd/mm/yyyy`). Country, province/state and city are optional and
+  chosen from dropdowns rather than typed freehand, so location text stays
+  consistent across events.
+- **Manage locations:** click **Manage locations** to add or remove the
+  country, province/state and city options that appear in those dropdowns.
+  This list is self-maintained - there's no bundled global geography
+  dataset - so it only ever contains places you actually use. Removing a
+  location option never touches countdowns that already used it; the saved
+  value stays on that row.
+- **Upcoming and past:** the table sorts upcoming events soonest-first,
+  followed by past events most-recent-first at reduced opacity, each with
+  its computed "time until" (or "time since") the event date.
+- **Dashboard widget:** a dedicated **Countdowns** screen on the main
+  dashboard (`/`) shows the next few upcoming events as cards, with a link
+  back to `/competitions` for the full list including past events. "Today"
+  for the countdown calculation uses your configured timezone from
+  `/settings`, not server UTC time.
+- Editing or deleting a countdown works the same way as competition rows -
+  inline **Edit**/**Delete** links on each table row, no separate page.
+
 ## Google Health integration
 
 PowerliftingDash can connect to the Google Health API for four optional data
@@ -456,7 +489,7 @@ app/
   openpowerlifting.py Fetches personal bests from openpowerlifting.org
   google_health.py   OAuth and data normalisation for Google Health
   metrics.py         Raw entry row + config -> dashboard card/chart payload
-  routes/            Page routes (dashboard, entries, targets, settings, competitions) and JSON API
+  routes/            Page routes (dashboard, entries, targets, settings, competitions, countdowns) and JSON API
   templates/         Jinja2 templates (dashboard, entry_form, entries_list, targets, settings, competitions_list, competition_form)
   static/            CSS, JS, vendored Chart.js
   schema.sql, schema_manifest.json   Generated - do not hand-edit

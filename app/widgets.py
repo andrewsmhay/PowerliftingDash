@@ -42,6 +42,7 @@ WIDGET_CATALOG = [
     {"id": "health.respiratory_rate", "label": "Respiratory Rate", "category": "Activity & Recovery", "kind": "health_card", "requires_google_health": True},
     {"id": "health.oxygen_saturation_pct", "label": "Oxygen Saturation", "category": "Activity & Recovery", "kind": "health_card", "requires_google_health": True},
     {"id": "chart.activity_recovery_trend", "label": "Activity & Recovery Trends", "category": "Trends", "kind": "activity_trend_chart", "requires_google_health": True},
+    {"id": "countdown.list", "label": "Event Countdowns", "category": "Countdowns", "kind": "countdown_list"},
 ]
 
 
@@ -100,6 +101,13 @@ def default_screens(google_health_configured: bool) -> list[dict]:
                 {"id": "pr_timeline.squat", "x": 0, "y": 8, "w": 4, "h": 8},
                 {"id": "pr_timeline.bench", "x": 4, "y": 8, "w": 4, "h": 8},
                 {"id": "pr_timeline.deadlift", "x": 8, "y": 8, "w": 4, "h": 8},
+            ],
+        },
+        {
+            "id": "screen-countdowns",
+            "name": "Countdowns",
+            "widgets": [
+                {"id": "countdown.list", "x": 0, "y": 0, "w": 12, "h": 14},
             ],
         },
     ]

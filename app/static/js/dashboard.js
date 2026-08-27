@@ -211,6 +211,16 @@
     return widget ? widget.label : widgetId;
   }
 
+  function escapeHtml(value) {
+    if (value === null || value === undefined) return "";
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
   function chartOptions(extraScales) {
     return {
       responsive: true,
@@ -319,6 +329,32 @@
     }));
   }
 
+  function countdownListHtml(widgetId, data) {
+    const label = widgetLabel(widgetId);
+    const block = data.countdowns_upcoming || { items: [], total: 0 };
+    const items = block.items || [];
+    if (!items.length) {
+      return '<div class="card countdown-list-card"><div class="card-label">' + label + '</div>' +
+        '<div class="empty" style="margin-top:10px;">No upcoming events. ' +
+        '<a href="/competitions">Add a countdown</a>.</div></div>';
+    }
+    const cardsHtml = items.map((item) => {
+      const location = item.display_location ? '<span>' + escapeHtml(item.display_location) + '</span>' : "";
+      return '<div class="countdown-item">' +
+        '<div class="countdown-item-time">' + escapeHtml(item.time_until) + '</div>' +
+        '<div class="countdown-item-name">' + escapeHtml(item.event_name) + '</div>' +
+        '<div class="countdown-item-meta">' + escapeHtml(item.display_date) + (location ? " &middot; " + location : "") + '</div>' +
+        '</div>';
+    }).join("");
+    let moreHtml = "";
+    if (block.total > items.length) {
+      moreHtml = '<div class="countdown-list-more"><a href="/competitions">+' +
+        (block.total - items.length) + ' more on Competition history</a></div>';
+    }
+    return '<div class="card countdown-list-card"><div class="card-label">' + label + '</div>' +
+      '<div class="countdown-list-grid">' + cardsHtml + '</div>' + moreHtml + '</div>';
+  }
+
   const cardRenderers = {
     lift_card: (widgetId, data) => {
       const card = widgetId === "lift.total"
@@ -333,6 +369,7 @@
     ratio_card: analyticsCardHtml,
     rate_card: analyticsCardHtml,
     pr_interval_card: prIntervalCardHtml,
+    countdown_list: countdownListHtml,
   };
 
   const chartRenderers = {
@@ -374,6 +411,7 @@
     const isChart = ["chart", "pr_timeline_chart", "activity_trend_chart"].includes(widget.kind);
     if (isChart) return { w: widget.kind === "pr_timeline_chart" ? 4 : 6, h: 8 };
     if (widget.kind === "lift_card") return { w: 3, h: 6 };
+    if (widget.kind === "countdown_list") return { w: 12, h: 14 };
     return { w: 3, h: 4 };
   }
 

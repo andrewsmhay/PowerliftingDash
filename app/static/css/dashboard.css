@@ -564,3 +564,115 @@ body.is-fullscreen:not(.dashboard-editing) {
     font-size: 34px;
   }
 }
+
+/* Countdown widget (dashboard) */
+.countdown-list-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.countdown-list-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.countdown-item {
+  flex: 1 1 160px;
+  min-width: 150px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.countdown-item-time {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1.15;
+}
+
+.countdown-item-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin-top: 4px;
+}
+
+.countdown-item-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.countdown-list-more {
+  margin-top: 12px;
+  font-size: 12.5px;
+}
+
+.countdown-list-more a { color: var(--primary); }
+.countdown-list-more a:hover { color: var(--primary-hover); }
+
+/* Chip lists (countdown location manager) */
+.chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 6px 4px 12px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.chip-remove {
+  background: transparent;
+  border: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 4px;
+  border-radius: 999px;
+}
+
+.chip-remove:hover {
+  color: var(--error);
+  background: var(--surface);
+}
+
+.location-kind-block { margin-bottom: 20px; }
+.location-kind-block:last-child { margin-bottom: 0; }
+.location-kind-block .section-label { margin: 0 0 10px; }
+
+.location-add-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.location-add-input {
+  flex: 1;
+  min-width: 120px;
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: var(--font-body);
+}
+
+#countdown-status { font-size: 13px; color: var(--text-muted); margin-top: 10px; }
+#countdown-status.error { color: var(--error); }

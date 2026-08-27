@@ -37,7 +37,7 @@ def test_layout_returns_default_screens_when_unset(monkeypatch):
     body = response.json()
     assert response.status_code == 200
     assert body["is_default"] is True
-    assert len(body["screens"]) == 3
+    assert len(body["screens"]) == 4
     assert body["screens"][0]["name"] == "Lifts & Body"
     assert body["rotation_seconds"] == 30
 
@@ -130,6 +130,6 @@ def test_layout_reset_returns_to_default(monkeypatch):
 
 def test_widget_catalog_is_gated_by_google_health_credentials(monkeypatch):
     client, db = make_client(monkeypatch)
-    assert len(client.get("/api/widgets/catalog").json()["widgets"]) == 28
+    assert len(client.get("/api/widgets/catalog").json()["widgets"]) == 29
     db.update_settings(google_health_client_id="client", google_health_client_secret="secret")
-    assert len(client.get("/api/widgets/catalog").json()["widgets"]) == 41
+    assert len(client.get("/api/widgets/catalog").json()["widgets"]) == 42
