@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
@@ -10,7 +11,14 @@ from .routes import api, competitions, countdowns, entries, google_health, pages
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
-app = FastAPI(title="Powerlifting Dashboard")
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    db.init_db()
+    yield
+
+
+app = FastAPI(title="Powerlifting Dashboard", lifespan=lifespan)
 app.state.templates = Jinja2Templates(directory=str(config.APP_DIR / "templates"))
 app.mount("/static", StaticFiles(directory=str(config.APP_DIR / "static")), name="static")
 
@@ -21,11 +29,6 @@ app.include_router(entries.router)
 app.include_router(targets.router)
 app.include_router(competitions.router)
 app.include_router(countdowns.router)
-
-
-@app.on_event("startup")
-def on_startup():
-    db.init_db()
 
 
 @app.get("/healthz")

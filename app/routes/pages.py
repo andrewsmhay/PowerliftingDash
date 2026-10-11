@@ -21,9 +21,9 @@ def dashboard(request: Request):
     payload["entry_count"] = db.count_entries()
     payload["latest_health_metric"] = db.get_latest_health_metric()
     return request.app.state.templates.TemplateResponse(
+        request,
         "dashboard.html",
         {
-            "request": request,
             "data": payload,
             "poll_seconds": config.DASHBOARD_POLL_SECONDS,
             "rotation_seconds": settings.get("dashboard_rotation_seconds") or 30,
@@ -40,9 +40,9 @@ def settings_page(request: Request):
     if settings.get("date_of_birth"):
         date_of_birth_display = to_ddmmyyyy(settings["date_of_birth"])
     return request.app.state.templates.TemplateResponse(
+        request,
         "settings.html",
         {
-            "request": request,
             "settings": settings,
             "date_of_birth_display": date_of_birth_display,
             "entry_count": db.count_entries(),

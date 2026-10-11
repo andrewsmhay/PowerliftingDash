@@ -83,9 +83,9 @@ def competitions_list_page(request: Request):
     past.reverse()  # get_all_countdowns() is ascending; most-recently-past first reads better
 
     return request.app.state.templates.TemplateResponse(
+        request,
         "competitions_list.html",
         {
-            "request": request,
             "meets": meets,
             "sex_configured": sex in ("male", "female"),
             "countdowns_upcoming": upcoming,
@@ -98,9 +98,9 @@ def competitions_list_page(request: Request):
 @router.get("/competitions/new", response_class=HTMLResponse)
 def new_competition_page(request: Request):
     return request.app.state.templates.TemplateResponse(
+        request,
         "competition_form.html",
         {
-            "request": request,
             "meet": {},
             "editing": False,
             "competition_id": None,
@@ -116,9 +116,9 @@ def edit_competition_page(request: Request, competition_id: str):
     meet = dict(meet)
     meet["competition_date"] = to_ddmmyyyy(meet["competition_date"])
     return request.app.state.templates.TemplateResponse(
+        request,
         "competition_form.html",
         {
-            "request": request,
             "meet": meet,
             "editing": True,
             "competition_id": competition_id,

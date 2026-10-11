@@ -33,12 +33,12 @@ Replace the fixed-section dashboard with a widget-based grid the user can edit:
 
 ## 2. Library: GridStack.js
 
-Vendor GridStack **v12.3.3** locally (same pattern as `chart.umd.min.js`, no
+Vendor GridStack **v14.0.0** locally (same pattern as `chart.umd.min.js`, no
 CDN dependency at runtime, pin the version, no jQuery required):
 
-- `https://cdn.jsdelivr.net/npm/gridstack@12.3.3/dist/gridstack-all.js` -> save
+- `https://cdn.jsdelivr.net/npm/gridstack@14.0.0/dist/gridstack-all.js` -> save
   as `app/static/js/gridstack-all.js`
-- `https://cdn.jsdelivr.net/npm/gridstack@12.3.3/dist/gridstack.min.css` -> save
+- `https://cdn.jsdelivr.net/npm/gridstack@14.0.0/dist/gridstack.min.css` -> save
   as `app/static/css/gridstack.min.css`
 
 Key API used: `GridStack.init(opts, el)`, `grid.save(false, false)` (positions

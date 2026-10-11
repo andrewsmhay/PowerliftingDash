@@ -30,9 +30,9 @@ def _config_fields_by_area() -> dict[str, list[dict]]:
 def targets_page(request: Request):
     config = db.get_config()
     return request.app.state.templates.TemplateResponse(
+        request,
         "targets.html",
         {
-            "request": request,
             "areas": _config_fields_by_area(),
             "config": config,
         },

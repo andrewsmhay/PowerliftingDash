@@ -93,9 +93,9 @@ def _validate_manual_values(values: dict) -> set[str]:
 def new_entry_page(request: Request):
     latest = db.get_latest_entry() or {}
     return request.app.state.templates.TemplateResponse(
+        request,
         "entry_form.html",
         {
-            "request": request,
             "areas": _manual_fields_by_area(),
             "latest": latest,
             "today": _today_ddmmyyyy(),
@@ -117,9 +117,9 @@ def entries_list_page(request: Request):
     for entry in entries:
         entry["display_date"] = to_ddmmyyyy(entry["entry_date"])
     return request.app.state.templates.TemplateResponse(
+        request,
         "entries_list.html",
         {
-            "request": request,
             "columns": columns,
             "entries": entries,
         },
@@ -132,9 +132,9 @@ def edit_entry_page(request: Request, entry_id: str):
     if not entry:
         raise HTTPException(status_code=404, detail="Entry not found")
     return request.app.state.templates.TemplateResponse(
+        request,
         "entry_form.html",
         {
-            "request": request,
             "areas": _manual_fields_by_area(),
             "latest": entry,
             "today": to_ddmmyyyy(entry["entry_date"]),

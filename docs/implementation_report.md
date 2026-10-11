@@ -2,7 +2,7 @@
 
 ## Delivered work
 
-1. Vendored GridStack 12.3.3 locally and referenced the local stylesheet and script from the dashboard template.
+1. Vendored GridStack 14.0.0 locally and referenced the local stylesheet and script from the dashboard template.
 2. Added the widget catalogue, configuration-sensitive default layout, Google Health gating, and all supplied card and chart widget definitions.
 3. Added DOTS scoring, bodyweight ratios, current-date-anchored rate of change, and target date projection analytics.
 4. Added SQLite migrations for `dashboard_layout` and `lifter_sex`, plus Google Health metric history retrieval.
@@ -35,8 +35,8 @@ The supplied exact catalogue contains 38 widgets: 25 always available entries an
 
 - `app/analytics.py`: DOTS, ratio, trend-rate, and target-projection calculation helpers.
 - `app/widgets.py`: widget catalogue and dynamic default dashboard layout.
-- `app/static/css/gridstack.min.css`: locally vendored GridStack 12.3.3 stylesheet.
-- `app/static/js/gridstack-all.js`: locally vendored GridStack 12.3.3 browser bundle.
+- `app/static/css/gridstack.min.css`: locally vendored GridStack 14.0.0 stylesheet.
+- `app/static/js/gridstack-all.js`: locally vendored GridStack 14.0.0 browser bundle.
 - `tests/test_analytics.py`: unit tests for dashboard analytics.
 - `tests/test_widgets.py`: widget catalogue and default layout tests.
 - `tests/test_dashboard_layout_route.py`: dashboard layout and catalogue API tests.
