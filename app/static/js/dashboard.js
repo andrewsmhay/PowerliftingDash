@@ -270,6 +270,10 @@
   }
 
   function renderStandardChart(widgetId, container, data) {
+    if (widgetId === "chart.body_composition") {
+      renderBodyComposition(widgetId, container, data);
+      return;
+    }
     const history = data.history || [];
     const labels = history.map((row) => row.entry_date);
     const isLiftChart = widgetId === "chart.lifts";
@@ -1012,6 +1016,246 @@
     });
   }
 
+  // ---------------------------------------------------------------------
+  // Body Composition Over Time: "Separate" small multiples (default) or
+  // "Change" since the first entry in view. Bodyweight is several times
+  // larger than muscle or fat mass, so a single shared kg axis flattens
+  // every trend; both views put each measurement on a readable scale.
+  // ---------------------------------------------------------------------
+
+  const BODY_COMPOSITION_MODE_KEY = "pld.bodyComposition.mode";
+  const BODY_COMPOSITION_SERIES = [
+    { key: "body_weight_mass", label: "Bodyweight", colour: CHART_COLORS[0] },
+    { key: "skeletal_muscle_mass", label: "Muscle mass", colour: CHART_COLORS[1] },
+    { key: "body_fat_mass", label: "Fat mass", colour: CHART_COLORS[2] },
+  ];
+
+  function bodyCompositionMode() {
+    try {
+      return window.localStorage.getItem(BODY_COMPOSITION_MODE_KEY) === "change" ? "change" : "separate";
+    } catch (error) {
+      return "separate";
+    }
+  }
+
+  function setBodyCompositionMode(mode) {
+    try {
+      window.localStorage.setItem(BODY_COMPOSITION_MODE_KEY, mode);
+    } catch (error) {
+      // Private browsing can block storage; the toggle still works for this page.
+    }
+    bodyCompositionModeFallback = mode;
+  }
+
+  let bodyCompositionModeFallback = null;
+
+  function currentBodyCompositionMode() {
+    return bodyCompositionModeFallback || bodyCompositionMode();
+  }
+
+  function destroyWidgetCharts(widgetId) {
+    Object.keys(charts).forEach((key) => {
+      if (key === widgetId || key.indexOf(widgetId + ":") === 0) {
+        charts[key].destroy();
+        delete charts[key];
+      }
+    });
+  }
+
+  function shortIsoDate(isoDate) {
+    if (!isoDate) return "";
+    const parts = String(isoDate).split("-");
+    return parts.length === 3 ? parts[2] + "/" + parts[1] + "/" + parts[0].slice(2) : isoDate;
+  }
+
+  function firstValue(values) {
+    for (let i = 0; i < values.length; i += 1) {
+      if (hasValue(values[i])) return { value: values[i], index: i };
+    }
+    return null;
+  }
+
+  function lastValue(values) {
+    for (let i = values.length - 1; i >= 0; i -= 1) {
+      if (hasValue(values[i])) return values[i];
+    }
+    return null;
+  }
+
+  // Draws a solid line at y = 0 so gains and losses read at a glance.
+  const zeroLinePlugin = {
+    id: "zeroLine",
+    beforeDatasetsDraw(chart) {
+      const scale = chart.scales.y;
+      if (!scale || scale.min > 0 || scale.max < 0) return;
+      const y = scale.getPixelForValue(0);
+      const area = chart.chartArea;
+      const ctx = chart.ctx;
+      ctx.save();
+      ctx.strokeStyle = "#5a5957";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(area.left, y);
+      ctx.lineTo(area.right, y);
+      ctx.stroke();
+      ctx.restore();
+    },
+  };
+
+  function bodyCompositionShell(widgetId, container, mode) {
+    const card = container.querySelector(".chart-card.body-composition");
+    if (card && card.dataset.mode === mode) return card;
+    destroyWidgetCharts(widgetId);
+    const toggle = '<div class="view-toggle" role="group" aria-label="Chart view">' +
+      ["separate", "change"].map((value) => '<button type="button" data-mode="' + value + '" aria-pressed="' +
+        (value === mode) + '"' + (value === mode ? ' class="active"' : "") + ">" +
+        (value === "separate" ? "Separate" : "Change") + "</button>").join("") + "</div>";
+    let body;
+    if (mode === "separate") {
+      body = '<div class="bc-strips">' + BODY_COMPOSITION_SERIES.map((series, index) =>
+        '<div class="bc-strip"><div class="bc-strip-head"><span class="bc-strip-name">' +
+        '<span class="bc-swatch" style="background:' + series.colour + '"></span>' + series.label +
+        '</span><span class="bc-strip-value" data-series="' + index + '"></span></div>' +
+        '<div class="bc-strip-canvas"><canvas data-series="' + index + '"></canvas></div></div>').join("") + "</div>";
+    } else {
+      body = '<div class="chart-summary"></div><div class="chart-canvas-wrap"><canvas></canvas></div>';
+    }
+    container.innerHTML = '<div class="chart-card body-composition" data-mode="' + mode + '">' +
+      '<div class="chart-card-head"><div class="card-label">' + widgetLabel(widgetId) + "</div>" + toggle + "</div>" +
+      body + "</div>";
+    container.querySelectorAll(".view-toggle button").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (button.dataset.mode === currentBodyCompositionMode()) return;
+        setBodyCompositionMode(button.dataset.mode);
+        const element = container.closest(".grid-stack-item");
+        if (element) renderWidgetElement(element);
+        else renderBodyComposition(widgetId, container, dashboardData || {});
+      });
+    });
+    return container.querySelector(".chart-card");
+  }
+
+  function upsertChart(key, canvas, config) {
+    if (charts[key]) {
+      charts[key].data = config.data;
+      charts[key].options = config.options;
+      charts[key].update("none");
+      return;
+    }
+    charts[key] = new Chart(canvas, config);
+  }
+
+  function renderBodyComposition(widgetId, container, data) {
+    const history = data.history || [];
+    const labels = history.map((row) => row.entry_date);
+    const seriesValues = BODY_COMPOSITION_SERIES.map((series) => history.map((row) => row[series.key]));
+    if (!seriesValues.some((values) => firstValue(values))) {
+      destroyWidgetCharts(widgetId);
+      container.innerHTML = '<div class="card insight-empty"><div class="card-label">' + widgetLabel(widgetId) +
+        '</div><div class="insight-empty-text">Log bodyweight, muscle mass or fat mass to see how your ' +
+        'composition changes. <a href="/entries/new">Add an entry</a>.</div></div>';
+      return;
+    }
+    const mode = currentBodyCompositionMode();
+    const card = bodyCompositionShell(widgetId, container, mode);
+    const xTicks = {
+      color: COLOUR_MUTED, font: { size: 10 }, maxTicksLimit: 6, maxRotation: 0,
+      callback: function (value) { return shortIsoDate(this.getLabelForValue(value)); },
+    };
+    const tooltipTitle = (items) => items.length ? ukDate(items[0].label) : "";
+
+    if (mode === "separate") {
+      BODY_COMPOSITION_SERIES.forEach((series, index) => {
+        const values = seriesValues[index];
+        const first = firstValue(values);
+        const latest = lastValue(values);
+        const valueEl = card.querySelector('.bc-strip-value[data-series="' + index + '"]');
+        valueEl.innerHTML = first
+          ? "<strong>" + fmt(latest) + " kg</strong> " +
+            '<span class="bc-strip-change">' + signed(Math.round((latest - first.value) * 10) / 10, 1, "") + " since " +
+            shortIsoDate(labels[first.index]) + "</span>"
+          : '<span class="bc-strip-change">No data</span>';
+        const isLast = index === BODY_COMPOSITION_SERIES.length - 1;
+        upsertChart(widgetId + ":" + series.key, card.querySelector('canvas[data-series="' + index + '"]'), {
+          type: "line",
+          data: {
+            labels: labels,
+            datasets: [Object.assign(buildDataset(series.label, values, series.colour), { pointRadius: 0, pointHitRadius: 6 })],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            interaction: { mode: "index", intersect: false },
+            layout: { padding: { right: 4 } },
+            plugins: {
+              legend: { display: false },
+              tooltip: { callbacks: { title: tooltipTitle, label: (item) => series.label + ": " + fmt(item.raw) + " kg" } },
+            },
+            scales: {
+              x: { display: isLast, ticks: xTicks, grid: { display: false } },
+              y: {
+                grace: "10%",
+                afterFit: (scale) => { scale.width = 38; },
+                ticks: { color: COLOUR_MUTED, font: { size: 10 }, maxTicksLimit: 3 },
+                grid: { color: COLOUR_GRID },
+              },
+            },
+          },
+        });
+      });
+      return;
+    }
+
+    const changes = seriesValues.map((values) => {
+      const first = firstValue(values);
+      return values.map((value) => (first && hasValue(value) ? Math.round((value - first.value) * 10) / 10 : null));
+    });
+    const firsts = seriesValues.map(firstValue).filter(Boolean);
+    const baselineIndex = Math.min.apply(null, firsts.map((first) => first.index));
+    const summaryParts = BODY_COMPOSITION_SERIES.map((series, index) => {
+      const latest = lastValue(changes[index]);
+      if (!hasValue(latest)) return "";
+      const improving = series.key === "body_weight_mass" ? "" : (series.key === "body_fat_mass" ? latest < 0 : latest > 0) ? "positive" : latest === 0 ? "" : "negative";
+      return statHtml(series.label, signed(latest, 1, " kg"), improving);
+    }).join("");
+    card.querySelector(".chart-summary").innerHTML =
+      '<span class="chart-stat muted">Since ' + ukDate(labels[baselineIndex]) + "</span>" + summaryParts;
+    upsertChart(widgetId, card.querySelector("canvas"), {
+      type: "line",
+      data: {
+        labels: labels,
+        datasets: BODY_COMPOSITION_SERIES.map((series, index) =>
+          Object.assign(buildDataset(series.label, changes[index], series.colour), { pointRadius: 0, pointHitRadius: 6 })),
+      },
+      options: Object.assign(chartOptions({
+        x: { ticks: xTicks, grid: { display: false } },
+        y: {
+          grace: "10%",
+          ticks: { color: COLOUR_MUTED, font: { size: 10 }, callback: (value) => (value > 0 ? "+" : "") + value },
+          grid: { color: COLOUR_GRID },
+          title: { display: true, text: "kg change", color: COLOUR_MUTED, font: { size: 10 } },
+        },
+      }), {
+        animation: false,
+        plugins: {
+          legend: { position: "bottom", labels: { color: COLOUR_MUTED, boxWidth: 12, font: { size: 11 } } },
+          tooltip: {
+            callbacks: {
+              title: tooltipTitle,
+              label: (item) => {
+                const actual = seriesValues[item.datasetIndex][item.dataIndex];
+                return item.dataset.label + ": " + signed(item.raw, 1, " kg") + " (" + fmt(actual) + " kg)";
+              },
+            },
+          },
+        },
+      }),
+      plugins: [zeroLinePlugin],
+    });
+  }
+
   const cardRenderers = {
     lift_card: (widgetId, data) => {
       const card = widgetId === "lift.total"
@@ -1279,11 +1523,7 @@
     button.setAttribute("aria-label", "Remove " + element.gridstackNode.id);
     button.textContent = "×";
     button.addEventListener("click", () => {
-      const widgetId = element.gridstackNode.id;
-      if (charts[widgetId]) {
-        charts[widgetId].destroy();
-        delete charts[widgetId];
-      }
+      destroyWidgetCharts(element.gridstackNode.id);
       grid.removeWidget(element);
       currentWidgetIds = grid.getGridItems().map((gridItem) => gridItem.gridstackNode.id);
       populateTray();
@@ -1532,8 +1772,9 @@
     grid.setStatic(true);
     grid.on("resizestop", (_event, element) => {
       const widgetId = element.gridstackNode && element.gridstackNode.id;
-      const chart = charts[widgetId];
-      if (chart && element.querySelector("canvas")) chart.resize();
+      Object.keys(charts).forEach((key) => {
+        if (key === widgetId || key.indexOf(widgetId + ":") === 0) charts[key].resize();
+      });
     });
     let resizeDebounce = null;
     window.addEventListener("resize", () => {
