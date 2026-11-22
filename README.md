@@ -374,6 +374,22 @@ The "next meet" is the soonest upcoming countdown on `/competitions`.
   fat mass) against change in fat mass, split into Recomposition, Lean
   gain, Cut and Regression quadrants.
 
+### Body Composition Over Time (Trends)
+
+Bodyweight is several times larger than muscle or fat mass, so plotting all
+three on one kg axis flattens every trend. The chart has a toggle in its
+header:
+
+- **Separate** (default): bodyweight, muscle mass and fat mass in three
+  stacked strips, each on its own scale with a shared date axis. Each strip
+  shows the latest value and the change since the first entry in view.
+- **Change**: all three as kg gained or lost since the first entry in view,
+  around a zero line. The summary shows each net change, and the tooltip
+  shows both the change and the actual kg.
+
+The choice is remembered per browser (local storage), so a kiosk screen and
+your phone can show different views.
+
 ### Existing saved layouts
 
 If you had already saved a custom dashboard layout before these screens
