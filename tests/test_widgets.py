@@ -7,7 +7,7 @@ from app.widgets import WIDGET_CATALOG, build_catalog, default_screens
 
 
 def test_catalog_contains_all_widgets_when_google_health_is_configured():
-    assert len(WIDGET_CATALOG) == 42
+    assert len(WIDGET_CATALOG) == 50
     assert {widget["id"] for widget in build_catalog(True)} == {widget["id"] for widget in WIDGET_CATALOG}
 
 
@@ -15,7 +15,7 @@ def test_catalog_hides_every_google_health_widget_when_unconfigured():
     gated_ids = {widget["id"] for widget in WIDGET_CATALOG if widget.get("requires_google_health")}
     visible_ids = {widget["id"] for widget in build_catalog(False)}
     assert len(gated_ids) == 13
-    assert len(visible_ids) == 29
+    assert len(visible_ids) == 37
     assert gated_ids.isdisjoint(visible_ids)
 
 
@@ -25,8 +25,8 @@ def test_default_screens_only_add_activity_recovery_when_configured():
     without_health_ids = {item["id"] for screen in without_health for item in screen["widgets"]}
     with_health_ids = {item["id"] for screen in with_health for item in screen["widgets"]}
     initial_health_ids = {"health.steps", "health.resting_heart_rate", "health.sleep_minutes"}
-    assert len(without_health) == 4
-    assert len(with_health) == 5
+    assert len(without_health) == 6
+    assert len(with_health) == 7
     assert initial_health_ids.isdisjoint(without_health_ids)
     assert initial_health_ids.issubset(with_health_ids)
 
@@ -36,3 +36,21 @@ def test_every_default_screen_widget_exists_in_the_catalogue():
     for configured in (False, True):
         widget_ids = {item["id"] for screen in default_screens(configured) for item in screen["widgets"]}
         assert widget_ids.issubset(catalog_ids)
+
+
+def test_default_screens_include_meet_prep_and_performance_in_order():
+    names = [screen["name"] for screen in default_screens(True)]
+    assert names == [
+        "Lifts & Body", "Meet Prep", "Analytics", "Performance", "Trends", "Countdowns", "Activity & Recovery",
+    ]
+
+
+def test_default_screen_layouts_do_not_overlap_and_fit_twelve_columns():
+    for screen in default_screens(True):
+        occupied = set()
+        for item in screen["widgets"]:
+            assert item["x"] + item["w"] <= 12
+            cells = {(x, y) for x in range(item["x"], item["x"] + item["w"])
+                     for y in range(item["y"], item["y"] + item["h"])}
+            assert occupied.isdisjoint(cells), (screen["id"], item["id"])
+            occupied |= cells

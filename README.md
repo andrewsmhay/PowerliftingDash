@@ -53,6 +53,13 @@ run full screen on a monitor (kiosk-style).
   planned ahead of time rather than logged after the fact. A dedicated
   **Countdowns** dashboard screen shows the next few events at a glance -
   see "Event countdowns" below.
+- **Meet Prep screen:** planning towards your next meet - a meet-day total
+  projection against your target, your bodyweight trend against the weight
+  class limit, a next meet card and a progress board for every target. See
+  "Meet Prep and Performance screens" below.
+- **Performance screen:** longer-horizon analysis - strength against
+  bodyweight with DOTS curves, gym versus platform totals, lift balance and
+  body recomposition. See "Meet Prep and Performance screens" below.
 
 ## Screenshots
 
@@ -316,8 +323,65 @@ training camp, a trial, anything worth watching the clock for.
   back to `/competitions` for the full list including past events. "Today"
   for the countdown calculation uses your configured timezone from
   `/settings`, not server UTC time.
+- **Weight class:** each countdown can carry an optional weight class in kg
+  (`93`, or `120+` for an open class). The Meet Prep screen uses it to
+  track your bodyweight against the limit. Leave it blank and Meet Prep
+  falls back to the class from your most recent logged competition.
 - Editing or deleting a countdown works the same way as competition rows -
   inline **Edit**/**Delete** links on each table row, no separate page.
+
+## Meet Prep and Performance screens
+
+Two dashboard screens turn the data you already log into meet planning and
+longer-term analysis. Neither needs any new data entry beyond an optional
+weight class on a countdown.
+
+### Meet Prep
+
+The "next meet" is the soonest upcoming countdown on `/competitions`.
+
+- **Meet-Day Projection:** your squat + bench + deadlift total over time,
+  with a dashed projection to meet day. Each lift is projected separately
+  from the same 90-day trend used by the Analytics rate-of-change widgets
+  (a lift with too little recent data is held flat), then summed. Your
+  target total from `/targets` is drawn as a reference line, and the
+  summary shows the gap between projection and target.
+- **Next Meet:** days and weeks out, the event and location, weight class,
+  projected total, target total and projected weigh-in.
+- **Bodyweight vs Weight Class:** bodyweight over time against the class
+  limit, with your 28-day bodyweight trend projected to the weigh-in. The
+  summary says whether you are under the limit and holding, drifting over,
+  over but cutting fast enough, or over and needing to lose more per week.
+  Open classes (`120+`) have no limit to make.
+- **Target Progress:** one bar per configured target, measured from your
+  first logged entry (the baseline) to the target. Targets below the
+  baseline, such as body fat, count progress downwards. Bars cap at 100%
+  and a met target is marked as met.
+
+### Performance
+
+- **Strength vs Bodyweight:** every entry and every meet plotted as total
+  against bodyweight, with five DOTS curves in steps of 25 around your
+  current score for context.
+  Moving up and across a curve is real strength rather than added mass. The
+  curves need your sex set on `/settings`.
+- **Gym vs Platform:** each meet total next to your latest gym total logged
+  in the 120 days before it, with the carry-over percentage (meet total as
+  a share of gym total) in the tooltip and the average in the summary.
+- **Lift Balance:** the share of your total from each lift, month by month,
+  using each month's latest complete entry.
+- **Recomposition:** month-on-month change in lean mass (bodyweight minus
+  fat mass) against change in fat mass, split into Recomposition, Lean
+  gain, Cut and Regression quadrants.
+
+### Existing saved layouts
+
+If you had already saved a custom dashboard layout before these screens
+existed, both are appended to the end of your saved layout once, the first
+time the dashboard loads. If you then delete either screen in **Edit
+dashboard** and save, it stays deleted. **Reset to default** restores the
+standard order: Lifts & Body, Meet Prep, Analytics, Performance, Trends,
+Countdowns (and Activity & Recovery when Google Health is configured).
 
 ## Google Health integration
 
@@ -489,6 +553,7 @@ app/
   openpowerlifting.py Fetches personal bests from openpowerlifting.org
   google_health.py   OAuth and data normalisation for Google Health
   metrics.py         Raw entry row + config -> dashboard card/chart payload
+  insights.py        Meet Prep and Performance calculations (projection, weight class, scatter, balance)
   routes/            Page routes (dashboard, entries, targets, settings, competitions, countdowns) and JSON API
   templates/         Jinja2 templates (dashboard, entry_form, entries_list, targets, settings, competitions_list, competition_form)
   static/            CSS, JS, vendored Chart.js

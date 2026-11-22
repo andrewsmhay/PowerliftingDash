@@ -14,12 +14,12 @@ DOTS_COEFFICIENTS = {
 }
 
 
-def compute_dots_score(total_kg, bodyweight_kg, sex):
-    """Returns a DOTS value, or a reason when the inputs are incomplete."""
-    if sex not in DOTS_COEFFICIENTS:
-        return {"value": None, "reason": "sex_not_configured"}
-    if total_kg is None or bodyweight_kg is None:
-        return {"value": None, "reason": "no_data"}
+def dots_denominator(bodyweight_kg, sex):
+    """The DOTS polynomial for a bodyweight (clamped to the formula's valid
+    range), or None when it cannot be evaluated. DOTS = total * 500 / this.
+    """
+    if sex not in DOTS_COEFFICIENTS or bodyweight_kg is None:
+        return None
     coefficients = DOTS_COEFFICIENTS[sex]
     bodyweight = max(coefficients["bw_min"], min(coefficients["bw_max"], bodyweight_kg))
     denominator = (
@@ -29,7 +29,17 @@ def compute_dots_score(total_kg, bodyweight_kg, sex):
         + coefficients["d"] * bodyweight ** 3
         + coefficients["e"] * bodyweight ** 4
     )
-    if denominator <= 0:
+    return denominator if denominator > 0 else None
+
+
+def compute_dots_score(total_kg, bodyweight_kg, sex):
+    """Returns a DOTS value, or a reason when the inputs are incomplete."""
+    if sex not in DOTS_COEFFICIENTS:
+        return {"value": None, "reason": "sex_not_configured"}
+    if total_kg is None or bodyweight_kg is None:
+        return {"value": None, "reason": "no_data"}
+    denominator = dots_denominator(bodyweight_kg, sex)
+    if denominator is None:
         return {"value": None, "reason": "no_data"}
     return {"value": round(total_kg * 500 / denominator, 1), "unit": "DOTS"}
 

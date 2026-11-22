@@ -43,7 +43,46 @@ WIDGET_CATALOG = [
     {"id": "health.oxygen_saturation_pct", "label": "Oxygen Saturation", "category": "Activity & Recovery", "kind": "health_card", "requires_google_health": True},
     {"id": "chart.activity_recovery_trend", "label": "Activity & Recovery Trends", "category": "Trends", "kind": "activity_trend_chart", "requires_google_health": True},
     {"id": "countdown.list", "label": "Event Countdowns", "category": "Countdowns", "kind": "countdown_list"},
+    {"id": "meet.projection", "label": "Meet-Day Projection", "category": "Meet Prep", "kind": "meet_projection_chart"},
+    {"id": "meet.next", "label": "Next Meet", "category": "Meet Prep", "kind": "next_meet_card"},
+    {"id": "meet.weight_class", "label": "Bodyweight vs Weight Class", "category": "Meet Prep", "kind": "weight_class_chart"},
+    {"id": "meet.target_progress", "label": "Target Progress", "category": "Meet Prep", "kind": "target_progress_board"},
+    {"id": "perf.strength_bodyweight", "label": "Strength vs Bodyweight", "category": "Performance", "kind": "strength_scatter_chart"},
+    {"id": "perf.gym_vs_platform", "label": "Gym vs Platform", "category": "Performance", "kind": "gym_platform_chart"},
+    {"id": "perf.lift_balance", "label": "Lift Balance", "category": "Performance", "kind": "lift_balance_chart"},
+    {"id": "perf.recomposition", "label": "Recomposition", "category": "Performance", "kind": "recomposition_chart"},
 ]
+
+# Screens added after the multi-screen layout shipped. A lifter with a saved
+# layout would otherwise never see them, so the layout route offers each one
+# once (appended to the saved screens) until a save records it as seen.
+INTRODUCED_SCREEN_IDS = ("screen-meet-prep", "screen-performance")
+
+MEET_PREP_SCREEN = {
+    "id": "screen-meet-prep",
+    "name": "Meet Prep",
+    "widgets": [
+        {"id": "meet.projection", "x": 0, "y": 0, "w": 8, "h": 8},
+        {"id": "meet.next", "x": 8, "y": 0, "w": 4, "h": 8},
+        {"id": "meet.weight_class", "x": 0, "y": 8, "w": 6, "h": 8},
+        {"id": "meet.target_progress", "x": 6, "y": 8, "w": 6, "h": 8},
+    ],
+}
+
+PERFORMANCE_SCREEN = {
+    "id": "screen-performance",
+    "name": "Performance",
+    "widgets": [
+        {"id": "perf.strength_bodyweight", "x": 0, "y": 0, "w": 6, "h": 8},
+        {"id": "perf.gym_vs_platform", "x": 6, "y": 0, "w": 6, "h": 8},
+        {"id": "perf.lift_balance", "x": 0, "y": 8, "w": 6, "h": 8},
+        {"id": "perf.recomposition", "x": 6, "y": 8, "w": 6, "h": 8},
+    ],
+}
+
+
+def _copy_screen(screen: dict) -> dict:
+    return {**screen, "widgets": [dict(item) for item in screen["widgets"]]}
 
 
 def build_catalog(google_health_configured: bool) -> list[dict]:
@@ -74,6 +113,7 @@ def default_screens(google_health_configured: bool) -> list[dict]:
                 {"id": "body.lean_mass", "x": 6, "y": 10, "w": 3, "h": 4},
             ],
         },
+        _copy_screen(MEET_PREP_SCREEN),
         {
             "id": "screen-analytics",
             "name": "Analytics",
@@ -92,6 +132,7 @@ def default_screens(google_health_configured: bool) -> list[dict]:
                 {"id": "pr_interval.deadlift", "x": 8, "y": 12, "w": 4, "h": 4},
             ],
         },
+        _copy_screen(PERFORMANCE_SCREEN),
         {
             "id": "screen-trends",
             "name": "Trends",

@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const countrySelect = document.getElementById("event_country");
   const regionSelect = document.getElementById("event_region");
   const citySelect = document.getElementById("event_city");
+  const weightClassInput = document.getElementById("event_weight_class");
 
   const manageBtn = document.getElementById("manage-locations-btn");
   const managePanel = document.getElementById("location-manager");
@@ -40,6 +41,7 @@ document.addEventListener("DOMContentLoaded", function () {
     countrySelect.value = "";
     regionSelect.value = "";
     citySelect.value = "";
+    if (weightClassInput) weightClassInput.value = "";
     submitBtn.textContent = "Add countdown";
     setStatus("");
   }
@@ -77,6 +79,7 @@ document.addEventListener("DOMContentLoaded", function () {
       countrySelect.value = row.dataset.country || "";
       regionSelect.value = row.dataset.region || "";
       citySelect.value = row.dataset.city || "";
+      if (weightClassInput) weightClassInput.value = row.dataset.weightClass || "";
       submitBtn.textContent = "Save changes";
       openForm();
     });
@@ -107,6 +110,7 @@ document.addEventListener("DOMContentLoaded", function () {
         country: countrySelect.value,
         region: regionSelect.value,
         city: citySelect.value,
+        weight_class: weightClassInput ? weightClassInput.value.trim() : "",
       },
     };
     setStatus("Saving...", "");
