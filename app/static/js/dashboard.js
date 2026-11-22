@@ -139,9 +139,15 @@
       const sign = delta >= 0 ? "+" : "";
       deltaHtml = '<span class="delta-pill ' + cls + '">' + sign + fmt(delta) + " " + unit + " vs last entry</span>";
     }
+    // The "% of target" label sits on the same row as the delta pill rather
+    // than on its own line: score cards are only 4 rows tall, and an extra
+    // line once a target was set pushed the delta pill out of the card.
+    const footerHtml = pctLabelHtml || deltaHtml
+      ? '<div class="score-footer">' + deltaHtml + pctLabelHtml + "</div>"
+      : "";
     return '<div class="card"><div class="card-label">' + label + '</div><div class="card-value">' +
       valueHtml(score.value, unit ? " " + unit : "", 1) + "</div>" +
-      progressHtml + pctLabelHtml + metaHtml + deltaHtml + "</div>";
+      progressHtml + metaHtml + footerHtml + "</div>";
   }
 
   function analyticsCardHtml(widgetId, data) {

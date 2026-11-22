@@ -758,3 +758,14 @@ body.is-fullscreen:not(.dashboard-editing) {
   .target-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
   .card-label-note { float: none; display: block; margin-top: 2px; }
 }
+
+/* Score cards: delta pill and "% of target" share one row */
+.score-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+}
+.score-footer .delta-pill { margin-top: 0; }
+.score-footer .progress-pct { margin: 0 0 0 auto; }
