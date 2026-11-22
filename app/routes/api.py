@@ -39,7 +39,8 @@ def dashboard_data():
     settings = db.get_settings()
     health_metrics = db.get_health_metrics(limit=180)
     payload = metrics.build_dashboard_payload(
-        latest, history, app_config, settings, health_metrics, full_history=full_history
+        latest, history, app_config, settings, health_metrics, full_history=full_history,
+        competitions=db.get_all_competitions_desc(), countdowns=db.get_all_countdowns(),
     )
     payload["entry_count"] = db.count_entries()
     payload["latest_health_metric"] = db.get_latest_health_metric()
@@ -100,6 +101,8 @@ def get_dashboard_layout():
             else:
                 screens = None
             if screens is not None:
+                seen = layout.get("seen_screens", []) if isinstance(layout, dict) else []
+                screens = _with_introduced_screens(screens, seen, configured)
                 return {
                     "screens": screens,
                     "is_default": False,
@@ -112,6 +115,33 @@ def get_dashboard_layout():
         "is_default": True,
         "rotation_seconds": settings.get("dashboard_rotation_seconds") or 30,
     }
+
+
+def _with_introduced_screens(screens: list, seen: list, configured: bool) -> list:
+    """Appends any newly introduced default screen the lifter has neither
+    got nor previously been offered. Once a layout is saved the screen is
+    recorded as seen, so deleting it in the editor keeps it deleted.
+    """
+    present = {screen.get("id") for screen in screens if isinstance(screen, dict)}
+    seen = set(seen if isinstance(seen, list) else [])
+    additions = [
+        screen for screen in widget_catalog.default_screens(configured)
+        if screen["id"] in widget_catalog.INTRODUCED_SCREEN_IDS
+        and screen["id"] not in present
+        and screen["id"] not in seen
+    ]
+    return list(screens) + additions
+
+
+def _stored_seen_screens() -> list:
+    raw = db.get_settings().get("dashboard_layout")
+    try:
+        layout = json.loads(raw) if raw else None
+    except (TypeError, ValueError):
+        return []
+    if isinstance(layout, dict) and isinstance(layout.get("seen_screens"), list):
+        return layout["seen_screens"]
+    return []
 
 
 @router.post("/dashboard/layout")
@@ -151,7 +181,10 @@ def save_dashboard_layout(payload: dict):
         })
     if not cleaned_screens:
         raise HTTPException(status_code=400, detail="screens must include a valid screen")
-    db.update_settings(dashboard_layout=json.dumps({"screens": cleaned_screens}))
+    # The lifter saved while every introduced screen was on offer, so record
+    # them all as seen: a screen removed in this save stays removed.
+    seen = sorted(set(_stored_seen_screens()) | set(widget_catalog.INTRODUCED_SCREEN_IDS))
+    db.update_settings(dashboard_layout=json.dumps({"screens": cleaned_screens, "seen_screens": seen}))
     return {"ok": True}
 
 

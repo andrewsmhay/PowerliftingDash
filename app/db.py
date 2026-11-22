@@ -215,6 +215,11 @@ def _ensure_countdowns_table() -> None:
             CREATE INDEX IF NOT EXISTS idx_countdowns_date ON countdowns(event_date);
             """
         )
+        # Added for the Meet Prep screen. Free text ("93", "120+") to match
+        # competitions.weight_class; additive, so older rows simply read NULL.
+        existing = {row["name"] for row in conn.execute("PRAGMA table_info(countdowns)").fetchall()}
+        if "weight_class" not in existing:
+            conn.execute("ALTER TABLE countdowns ADD COLUMN weight_class TEXT")
 
 
 def _ensure_countdown_locations_table() -> None:
@@ -656,7 +661,7 @@ def delete_competition(competition_id: str) -> bool:
         return cur.rowcount > 0
 
 
-COUNTDOWN_COLUMNS = ["event_name", "country", "region", "city"]
+COUNTDOWN_COLUMNS = ["event_name", "country", "region", "city", "weight_class"]
 COUNTDOWN_LOCATION_KINDS = ("country", "region", "city")
 
 

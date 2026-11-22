@@ -676,3 +676,85 @@ body.is-fullscreen:not(.dashboard-editing) {
 
 #countdown-status { font-size: 13px; color: var(--text-muted); margin-top: 10px; }
 #countdown-status.error { color: var(--error); }
+
+/* Meet Prep and Performance widgets */
+.chart-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 12.5px;
+  color: var(--text);
+  margin-bottom: 6px;
+  line-height: 1.35;
+}
+.chart-summary:empty { display: none; }
+.chart-summary a, .insight-empty-text a, .next-meet-card a { color: var(--primary); }
+.chart-stat { white-space: nowrap; font-weight: 600; }
+.chart-stat-label { color: var(--text-muted); font-weight: 400; }
+.chart-stat.positive { color: var(--success); }
+.chart-stat.negative { color: var(--warning); }
+.chart-stat.muted { color: var(--text-muted); font-weight: 400; white-space: normal; }
+
+.insight-empty-text {
+  color: var(--text-muted);
+  font-size: 13.5px;
+  line-height: 1.5;
+  margin-top: 10px;
+  max-width: 46ch;
+}
+
+.next-meet-card { display: flex; flex-direction: column; }
+.next-meet-days {
+  font-size: 44px;
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1.05;
+  margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.next-meet-days .unit { font-size: 16px; font-weight: 600; color: var(--text-muted); margin-left: 6px; }
+.next-meet-weeks { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
+.next-meet-name { font-size: 15px; font-weight: 600; color: var(--text); margin-top: 10px; }
+.next-meet-meta { font-size: 12.5px; color: var(--text-muted); margin-top: 2px; }
+.next-meet-rows {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 5px 12px;
+  margin: 12px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 12.5px;
+}
+.next-meet-rows dt { color: var(--text-muted); }
+.next-meet-rows dd { margin: 0; text-align: right; color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.muted-note { color: var(--text-faint); font-weight: 400; font-size: 11.5px; }
+
+.card-label-note {
+  float: right;
+  font-size: 11.5px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-faint);
+}
+.target-board { display: flex; flex-direction: column; }
+.target-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 8px 18px;
+  margin-top: 8px;
+}
+.target-row { min-width: 0; }
+.target-row-head { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; }
+.target-row-label { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.target-row-pct { color: var(--text-muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+.target-row-track { height: 6px; background: var(--surface-alt); border-radius: 999px; overflow: hidden; margin-top: 3px; }
+.target-row-fill { height: 100%; background: var(--primary); border-radius: 999px; }
+.target-row-value { font-size: 11.5px; color: var(--text-faint); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.target-row.met .target-row-fill { background: var(--success); }
+.target-row.met .target-row-pct { color: var(--success); }
+.target-row.behind .target-row-pct { color: var(--warning); }
+@media (max-width: 760px) {
+  .target-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
+  .card-label-note { float: none; display: block; margin-top: 2px; }
+}

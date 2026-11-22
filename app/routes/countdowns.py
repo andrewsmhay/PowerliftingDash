@@ -11,11 +11,12 @@ keep the app itself lightweight.
 from fastapi import APIRouter, HTTPException
 
 from .. import db
+from ..insights import parse_weight_class
 from ..date_utils import DateParseError, parse_entry_date, to_ddmmyyyy, to_iso
 
 router = APIRouter()
 
-COUNTDOWN_FIELDS = {"event_name", "country", "region", "city"}
+COUNTDOWN_FIELDS = {"event_name", "country", "region", "city", "weight_class"}
 
 
 def _validate_location_kind(kind: str) -> None:
@@ -32,8 +33,14 @@ def _coerce_countdown_values(values: dict) -> dict:
     event_name = (values.get("event_name") or "").strip()
     if not event_name:
         raise HTTPException(status_code=400, detail="Event name is required.")
+    weight_class = (values.get("weight_class") or "").strip() or None
+    if weight_class is not None and parse_weight_class(weight_class) is None:
+        raise HTTPException(
+            status_code=400, detail="Weight class must be a number of kg, for example 93 or 120+."
+        )
     return {
         "event_name": event_name,
+        "weight_class": weight_class,
         "country": (values.get("country") or "").strip() or None,
         "region": (values.get("region") or "").strip() or None,
         "city": (values.get("city") or "").strip() or None,

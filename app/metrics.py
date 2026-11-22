@@ -11,7 +11,9 @@ from .analytics import (
     compute_ratio,
     compute_wilks2_score,
 )
+from .date_utils import local_today
 from .formatting import dashboard_title
+from . import insights
 
 LIFTS = [
     {"key": "squat", "label": "Squat"},
@@ -335,6 +337,8 @@ def build_dashboard_payload(
     settings: dict | None = None,
     health_metrics: list[dict] | None = None,
     full_history: list[dict] | None = None,
+    competitions: list[dict] | None = None,
+    countdowns: list[dict] | None = None,
 ) -> dict:
     """Returns all dynamic dashboard values without doing database access.
 
@@ -350,6 +354,15 @@ def build_dashboard_payload(
     health_metrics = health_metrics or []
     analytics = build_analytics_payload(
         latest_entry, dashboard_config, settings, history_payload, full_history_payload
+    )
+    insight_payload = build_insights_payload(
+        history_payload,
+        full_history_payload if full_history_payload is not None else history_payload,
+        dashboard_config,
+        settings,
+        analytics,
+        competitions or [],
+        countdowns or [],
     )
     return {
         "latest_entry_date": (latest_entry or {}).get("entry_date"),
@@ -373,4 +386,44 @@ def build_dashboard_payload(
         "google_health_configured": bool(settings.get("google_health_client_id"))
         and bool(settings.get("google_health_client_secret")),
         **analytics,
+        **insight_payload,
+    }
+
+
+def build_insights_payload(
+    history_asc: list[dict],
+    full_history_asc: list[dict],
+    dashboard_config: dict,
+    settings: dict,
+    analytics: dict,
+    competitions_desc: list[dict],
+    countdowns: list[dict],
+    today=None,
+) -> dict:
+    """Data for the Meet Prep and Performance screens. Charts that show a
+    recent picture use the windowed history; whole-career views (targets'
+    starting points, strength scatter, gym vs platform, monthly trends) use
+    the full history.
+    """
+    today = today or local_today(settings.get("timezone"))
+    next_meet = insights.find_next_meet(countdowns, competitions_desc, today)
+    return {
+        "meet_prep": {
+            "next_meet": next_meet,
+            "projection": insights.build_meet_projection(
+                history_asc, dashboard_config, analytics.get("rate_of_change") or {}, next_meet
+            ),
+            "weight_class": insights.build_weight_class_status(history_asc, next_meet, today),
+            "target_progress": insights.build_target_progress(
+                full_history_asc, dashboard_config, settings, analytics, SCORES
+            ),
+        },
+        "performance": {
+            "strength_scatter": insights.build_strength_scatter(
+                full_history_asc, competitions_desc, settings.get("lifter_sex")
+            ),
+            "gym_vs_platform": insights.build_gym_vs_platform(full_history_asc, competitions_desc),
+            "lift_balance": insights.build_lift_balance(full_history_asc),
+            "recomposition": insights.build_recomposition(full_history_asc),
+        },
     }

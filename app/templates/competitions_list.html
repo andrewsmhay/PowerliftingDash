@@ -27,6 +27,11 @@
             <label for="event_date">Event date</label>
             <input type="text" id="event_date" name="event_date" pattern="\d{1,2}/\d{1,2}/\d{4}" placeholder="dd/mm/yyyy">
         </div>
+        <div class="field-group">
+            <label for="event_weight_class">Weight class (kg, optional)</label>
+            <input type="text" id="event_weight_class" name="weight_class" placeholder="e.g. 93 or 120+">
+            <div class="hint">Used by the Meet Prep screen's bodyweight chart. Leave blank to use your last meet's class.</div>
+        </div>
         <div style="display:flex; gap:12px; flex-wrap:wrap;">
             <div class="field-group" style="flex:1; min-width:140px;">
                 <label for="event_country">Country</label>
@@ -112,6 +117,7 @@
                 <tr>
                     <th>Event</th>
                     <th>Location</th>
+                    <th>Class</th>
                     <th>Date</th>
                     <th>Time until</th>
                     <th></th>
@@ -119,9 +125,10 @@
             </thead>
             <tbody>
                 {% for countdown in countdowns_upcoming %}
-                <tr data-id="{{ countdown.id }}" data-event-name="{{ countdown.event_name }}" data-event-date="{{ countdown.display_date }}" data-country="{{ countdown.country or '' }}" data-region="{{ countdown.region or '' }}" data-city="{{ countdown.city or '' }}">
+                <tr data-id="{{ countdown.id }}" data-event-name="{{ countdown.event_name }}" data-event-date="{{ countdown.display_date }}" data-country="{{ countdown.country or '' }}" data-region="{{ countdown.region or '' }}" data-city="{{ countdown.city or '' }}" data-weight-class="{{ countdown.weight_class or '' }}">
                     <td>{{ countdown.event_name }}</td>
                     <td>{{ countdown.display_location or "-" }}</td>
+                    <td>{{ countdown.weight_class or "-" }}</td>
                     <td>{{ countdown.display_date }}</td>
                     <td>{{ countdown.time_until }}</td>
                     <td>
@@ -131,9 +138,10 @@
                 </tr>
                 {% endfor %}
                 {% for countdown in countdowns_past %}
-                <tr style="opacity:0.65;" data-id="{{ countdown.id }}" data-event-name="{{ countdown.event_name }}" data-event-date="{{ countdown.display_date }}" data-country="{{ countdown.country or '' }}" data-region="{{ countdown.region or '' }}" data-city="{{ countdown.city or '' }}">
+                <tr style="opacity:0.65;" data-id="{{ countdown.id }}" data-event-name="{{ countdown.event_name }}" data-event-date="{{ countdown.display_date }}" data-country="{{ countdown.country or '' }}" data-region="{{ countdown.region or '' }}" data-city="{{ countdown.city or '' }}" data-weight-class="{{ countdown.weight_class or '' }}">
                     <td>{{ countdown.event_name }}</td>
                     <td>{{ countdown.display_location or "-" }}</td>
+                    <td>{{ countdown.weight_class or "-" }}</td>
                     <td>{{ countdown.display_date }}</td>
                     <td>{{ countdown.time_until }}</td>
                     <td>

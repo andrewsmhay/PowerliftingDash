@@ -37,7 +37,7 @@ def test_layout_returns_default_screens_when_unset(monkeypatch):
     body = response.json()
     assert response.status_code == 200
     assert body["is_default"] is True
-    assert len(body["screens"]) == 4
+    assert len(body["screens"]) == 6
     assert body["screens"][0]["name"] == "Lifts & Body"
     assert body["rotation_seconds"] == 30
 
@@ -50,11 +50,13 @@ def test_legacy_flat_list_loads_as_one_screen(monkeypatch):
     body = client.get("/api/dashboard/layout").json()
 
     assert body["is_default"] is False
-    assert body["screens"] == [{
+    assert body["screens"][0] == {
         "id": "legacy-dashboard",
         "name": "Dashboard",
         "widgets": widgets,
-    }]
+    }
+    # Screens introduced later are offered to a pre-existing saved layout.
+    assert [screen["id"] for screen in body["screens"][1:]] == ["screen-meet-prep", "screen-performance"]
 
 
 def test_layout_post_round_trips_multiple_screens(monkeypatch):
@@ -130,6 +132,32 @@ def test_layout_reset_returns_to_default(monkeypatch):
 
 def test_widget_catalog_is_gated_by_google_health_credentials(monkeypatch):
     client, db = make_client(monkeypatch)
-    assert len(client.get("/api/widgets/catalog").json()["widgets"]) == 29
+    assert len(client.get("/api/widgets/catalog").json()["widgets"]) == 37
     db.update_settings(google_health_client_id="client", google_health_client_secret="secret")
-    assert len(client.get("/api/widgets/catalog").json()["widgets"]) == 42
+    assert len(client.get("/api/widgets/catalog").json()["widgets"]) == 50
+
+
+def test_saved_layout_from_before_new_screens_is_offered_them_once(monkeypatch):
+    client, db = make_client(monkeypatch)
+    old_layout = {"screens": [{"id": "screen-lifts-body", "name": "Lifts & Body", "widgets": []}]}
+    db.update_settings(dashboard_layout=json.dumps(old_layout))
+
+    offered = client.get("/api/dashboard/layout").json()["screens"]
+    assert [screen["id"] for screen in offered] == ["screen-lifts-body", "screen-meet-prep", "screen-performance"]
+    assert offered[1]["name"] == "Meet Prep"
+    assert len(offered[1]["widgets"]) == 4
+
+    # The lifter keeps Meet Prep but deletes Performance, then saves.
+    kept = [offered[0], offered[1]]
+    assert client.post("/api/dashboard/layout", json={"screens": kept}).status_code == 200
+    after = client.get("/api/dashboard/layout").json()["screens"]
+    assert [screen["id"] for screen in after] == ["screen-lifts-body", "screen-meet-prep"]
+
+
+def test_saving_records_introduced_screens_as_seen(monkeypatch):
+    client, db = make_client(monkeypatch)
+    screens = [{"id": "screen-lifts", "name": "Lifts", "widgets": []}]
+    client.post("/api/dashboard/layout", json={"screens": screens})
+    stored = json.loads(db.get_settings()["dashboard_layout"])
+    assert stored["seen_screens"] == ["screen-meet-prep", "screen-performance"]
+    assert client.get("/api/dashboard/layout").json()["screens"] == screens

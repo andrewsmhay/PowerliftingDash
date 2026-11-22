@@ -355,6 +355,656 @@
       '<div class="countdown-list-grid">' + cardsHtml + '</div>' + moreHtml + '</div>';
   }
 
+  // ---------------------------------------------------------------------
+  // Meet Prep and Performance widgets
+  // ---------------------------------------------------------------------
+
+  const COLOUR_TEAL = CHART_COLORS[0];
+  const COLOUR_RUST = CHART_COLORS[1];
+  const COLOUR_GOLD = CHART_COLORS[2];
+  const COLOUR_ICE = CHART_COLORS[3];
+  const COLOUR_PLUM = CHART_COLORS[4];
+  const COLOUR_MUTED = "#797876";
+  const COLOUR_GRID = "#26241f";
+  const DAY_MS = 86400000;
+
+  function dayNumber(isoDate) {
+    return Math.round(Date.parse(isoDate + "T00:00:00Z") / DAY_MS);
+  }
+
+  function dayLabel(dayValue) {
+    const date = new Date(dayValue * DAY_MS);
+    const dd = String(date.getUTCDate()).padStart(2, "0");
+    const mm = String(date.getUTCMonth() + 1).padStart(2, "0");
+    return dd + "/" + mm + "/" + String(date.getUTCFullYear()).slice(2);
+  }
+
+  const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  function monthLabel(yearMonth) {
+    const parts = yearMonth.split("-");
+    return MONTH_NAMES[Number(parts[1]) - 1] + " " + parts[0].slice(2);
+  }
+
+  function signed(value, decimals, unit) {
+    if (value === null || value === undefined) return "-";
+    const sign = value > 0 ? "+" : value < 0 ? "−" : "";
+    return sign + fmt(Math.abs(value), decimals) + (unit || "");
+  }
+
+  function hasValue(value) {
+    return value !== null && value !== undefined && !Number.isNaN(value);
+  }
+
+  // Draws a dashed vertical line with a caption, e.g. meet day.
+  const verticalMarkerPlugin = {
+    id: "verticalMarker",
+    afterDatasetsDraw(chart) {
+      const marker = chart.options.plugins.verticalMarker;
+      if (!marker || !hasValue(marker.x)) return;
+      const xScale = chart.scales.x;
+      const area = chart.chartArea;
+      const x = xScale.getPixelForValue(marker.x);
+      if (x < area.left - 1 || x > area.right + 1) return;
+      const ctx = chart.ctx;
+      ctx.save();
+      ctx.strokeStyle = marker.colour || COLOUR_PLUM;
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x, area.top);
+      ctx.lineTo(x, area.bottom);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = marker.colour || COLOUR_PLUM;
+      ctx.font = "600 10px -apple-system, Segoe UI, Roboto, sans-serif";
+      ctx.textAlign = x > area.right - 60 ? "right" : "left";
+      ctx.fillText(marker.label || "", x + (ctx.textAlign === "right" ? -5 : 5), area.top + 10);
+      ctx.restore();
+    },
+  };
+
+  // Writes each DOTS curve's level at its right-hand end.
+  const curveLabelPlugin = {
+    id: "curveLabels",
+    afterDatasetsDraw(chart) {
+      const ctx = chart.ctx;
+      const area = chart.chartArea;
+      ctx.save();
+      ctx.font = "10px -apple-system, Segoe UI, Roboto, sans-serif";
+      ctx.fillStyle = COLOUR_MUTED;
+      ctx.textAlign = "right";
+      chart.data.datasets.forEach((dataset, index) => {
+        if (!dataset.curveLabel || !chart.isDatasetVisible(index)) return;
+        const meta = chart.getDatasetMeta(index);
+        for (let i = meta.data.length - 1; i >= 0; i -= 1) {
+          const point = meta.data[i];
+          if (point.x <= area.right && point.y >= area.top + 8 && point.y <= area.bottom) {
+            if (point.x < area.left + 70) break;
+            ctx.fillText(dataset.curveLabel, Math.min(point.x, area.right) - 2, point.y - 4);
+            break;
+          }
+        }
+      });
+      ctx.restore();
+    },
+  };
+
+  // Zero axes and corner captions for the recomposition quadrant chart.
+  const quadrantPlugin = {
+    id: "quadrants",
+    beforeDatasetsDraw(chart) {
+      if (!chart.options.plugins.quadrants) return;
+      const ctx = chart.ctx;
+      const area = chart.chartArea;
+      const x0 = chart.scales.x.getPixelForValue(0);
+      const y0 = chart.scales.y.getPixelForValue(0);
+      ctx.save();
+      ctx.strokeStyle = "#4a4946";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x0, area.top);
+      ctx.lineTo(x0, area.bottom);
+      ctx.moveTo(area.left, y0);
+      ctx.lineTo(area.right, y0);
+      ctx.stroke();
+      ctx.font = "600 10.5px -apple-system, Segoe UI, Roboto, sans-serif";
+      const corners = [
+        { text: "Recomposition", x: area.left + 6, y: area.top + 14, align: "left", colour: QUADRANT_COLOURS.recomposition },
+        { text: "Lean gain", x: area.right - 6, y: area.top + 14, align: "right", colour: QUADRANT_COLOURS.lean_gain },
+        { text: "Cut", x: area.left + 6, y: area.bottom - 6, align: "left", colour: QUADRANT_COLOURS.cut },
+        { text: "Regression", x: area.right - 6, y: area.bottom - 6, align: "right", colour: QUADRANT_COLOURS.regression },
+      ];
+      corners.forEach((corner) => {
+        ctx.fillStyle = corner.colour;
+        ctx.textAlign = corner.align;
+        ctx.fillText(corner.text, corner.x, corner.y);
+      });
+      ctx.restore();
+    },
+  };
+
+  const QUADRANT_COLOURS = {
+    recomposition: "#6daa45",
+    lean_gain: COLOUR_TEAL,
+    cut: COLOUR_GOLD,
+    regression: "#d163a7",
+  };
+
+  const QUADRANT_LABELS = {
+    recomposition: "recomposition",
+    lean_gain: "lean gain",
+    cut: "cut",
+    regression: "regression",
+  };
+
+  function baseScale(extra) {
+    return Object.assign({
+      ticks: { color: COLOUR_MUTED, font: { size: 10 } },
+      grid: { color: COLOUR_GRID },
+    }, extra || {});
+  }
+
+  function baseOptions(extra) {
+    const options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: false,
+      plugins: {
+        legend: { position: "bottom", labels: { color: COLOUR_MUTED, boxWidth: 12, font: { size: 11 } } },
+      },
+    };
+    return Object.assign(options, extra || {}, {
+      plugins: Object.assign(options.plugins, (extra || {}).plugins || {}),
+    });
+  }
+
+  function dateAxis(extra) {
+    return baseScale(Object.assign({
+      type: "linear",
+      ticks: { color: COLOUR_MUTED, font: { size: 10 }, maxTicksLimit: 7, callback: (value) => dayLabel(value) },
+    }, extra || {}));
+  }
+
+  function chartShell(widgetId, container, summaryHtml) {
+    let card = container.querySelector(".chart-card.insight-chart");
+    if (!card) {
+      if (charts[widgetId]) {
+        charts[widgetId].destroy();
+        delete charts[widgetId];
+      }
+      container.innerHTML = '<div class="chart-card insight-chart"><div class="card-label">' + widgetLabel(widgetId) +
+        '</div><div class="chart-summary"></div><div class="chart-canvas-wrap"><canvas></canvas></div></div>';
+      card = container.querySelector(".chart-card");
+    }
+    card.querySelector(".chart-summary").innerHTML = summaryHtml || "";
+    return card.querySelector("canvas");
+  }
+
+  function renderInsightChart(widgetId, container, summaryHtml, config) {
+    const canvas = chartShell(widgetId, container, summaryHtml);
+    const existing = charts[widgetId];
+    if (existing && existing.config.type === config.type) {
+      existing.data = config.data;
+      existing.options = config.options;
+      existing.update("none");
+      return;
+    }
+    if (existing) existing.destroy();
+    charts[widgetId] = new Chart(canvas, config);
+  }
+
+  function renderInsightEmpty(widgetId, container, messageHtml) {
+    if (charts[widgetId]) {
+      charts[widgetId].destroy();
+      delete charts[widgetId];
+    }
+    container.innerHTML = '<div class="card insight-empty"><div class="card-label">' + widgetLabel(widgetId) +
+      '</div><div class="insight-empty-text">' + messageHtml + "</div></div>";
+  }
+
+  function statHtml(label, value, tone) {
+    return '<span class="chart-stat' + (tone ? " " + tone : "") + '"><span class="chart-stat-label">' + label +
+      "</span> " + value + "</span>";
+  }
+
+  function meetPrep(data) {
+    return data.meet_prep || {};
+  }
+
+  function performance(data) {
+    return data.performance || {};
+  }
+
+  function renderMeetProjection(widgetId, container, data) {
+    const prep = meetPrep(data);
+    const projection = prep.projection || {};
+    const series = projection.series || [];
+    if (!series.length) {
+      renderInsightEmpty(widgetId, container,
+        'Log entries with all three lifts to see your total trend. <a href="/entries/new">Add an entry</a>.');
+      return;
+    }
+    const meetDay = projection.meet_date ? dayNumber(projection.meet_date) : null;
+    const historyPoints = series.map((point) => ({ x: dayNumber(point.date), y: point.total }));
+    const firstX = historyPoints[0].x;
+    const lastX = meetDay !== null ? meetDay : historyPoints[historyPoints.length - 1].x;
+    const datasets = [{
+      label: "Total", data: historyPoints, borderColor: COLOUR_TEAL, backgroundColor: COLOUR_TEAL,
+      pointRadius: 2, borderWidth: 2, tension: 0.25,
+    }];
+    if (meetDay !== null && hasValue(projection.projected_total) && projection.projection_start_date) {
+      datasets.push({
+        label: "Projected", data: [
+          { x: dayNumber(projection.projection_start_date), y: projection.current_total },
+          { x: meetDay, y: projection.projected_total },
+        ],
+        borderColor: COLOUR_ICE, backgroundColor: COLOUR_ICE, borderDash: [6, 5], pointRadius: (ctx) => (ctx.dataIndex === 1 ? 5 : 0), borderWidth: 2,
+      });
+    }
+    if (hasValue(projection.target_total)) {
+      datasets.push({
+        label: "Target", data: [{ x: firstX, y: projection.target_total }, { x: lastX, y: projection.target_total }],
+        borderColor: COLOUR_GOLD, backgroundColor: COLOUR_GOLD, borderDash: [3, 4], pointRadius: 0, borderWidth: 1.5,
+      });
+    }
+    let summary;
+    if (meetDay === null) {
+      summary = statHtml("Current total", fmt(projection.current_total) + " kg") +
+        '<span class="chart-stat muted">Add a countdown on <a href="/competitions">Competitions</a> to project to meet day.</span>';
+    } else if (!hasValue(projection.projected_total)) {
+      summary = '<span class="chart-stat muted">Log all three lifts to project a meet-day total.</span>';
+    } else {
+      const gap = projection.projected_vs_target;
+      const tone = !hasValue(gap) ? "" : gap >= 0 ? "positive" : "negative";
+      const lifts = projection.lifts || {};
+      const liftText = ["squat", "bench", "deadlift"].map((key) => {
+        const lift = lifts[key] || {};
+        const initial = key === "squat" ? "S" : key === "bench" ? "B" : "D";
+        return initial + " " + fmt(lift.projected) + (lift.trend_available ? "" : " (flat)");
+      }).join(" · ");
+      summary = statHtml("Meet day", fmt(projection.projected_total) + " kg") +
+        (hasValue(projection.target_total) ? statHtml("Target", fmt(projection.target_total) + " kg") : "") +
+        (hasValue(gap) ? statHtml("Gap", signed(gap, 1, " kg"), tone) : "") +
+        '<span class="chart-stat muted">' + liftText + "</span>";
+    }
+    renderInsightChart(widgetId, container, summary, {
+      type: "line",
+      data: { datasets: datasets },
+      options: baseOptions({
+        interaction: { mode: "nearest", intersect: false },
+        scales: {
+          x: dateAxis({ min: firstX, max: lastX + Math.max(2, Math.round((lastX - firstX) * 0.03)) }),
+          y: baseScale({ title: { display: true, text: "kg", color: COLOUR_MUTED } }),
+        },
+        plugins: {
+          tooltip: { callbacks: { title: (items) => items.length ? dayLabel(items[0].parsed.x) : "" } },
+          verticalMarker: meetDay !== null ? { x: meetDay, label: "Meet day" } : null,
+        },
+      }),
+      plugins: [verticalMarkerPlugin],
+    });
+  }
+
+  function nextMeetCardHtml(widgetId, data) {
+    const prep = meetPrep(data);
+    const meet = prep.next_meet;
+    const label = widgetLabel(widgetId);
+    if (!meet) {
+      return '<div class="card insight-empty"><div class="card-label">' + label + '</div>' +
+        '<div class="insight-empty-text">No upcoming meet. <a href="/competitions">Add a countdown</a> ' +
+        "and Meet Prep will plan towards it.</div></div>";
+    }
+    const days = meet.days_until;
+    const weeks = Math.floor(days / 7);
+    const remainder = days % 7;
+    const weeksText = days === 0 ? "Meet day" : weeks + (weeks === 1 ? " week" : " weeks") +
+      (remainder ? " " + remainder + (remainder === 1 ? " day" : " days") : "");
+    const weightClass = meet.weight_class;
+    let classText = "Not set";
+    if (weightClass) {
+      classText = escapeHtml(weightClass.label) +
+        (meet.weight_class_source === "last_meet" ? ' <span class="muted-note">from last meet</span>' : "");
+    }
+    const projection = prep.projection || {};
+    const status = prep.weight_class || {};
+    const rows = [
+      ["Weight class", classText],
+      ["Projected total", hasValue(projection.projected_total) ? fmt(projection.projected_total) + " kg" : "-"],
+      ["Target total", hasValue(projection.target_total) ? fmt(projection.target_total) + " kg" : "Not set"],
+      ["Projected weigh-in", hasValue(status.projected_weigh_in) ? fmt(status.projected_weigh_in) + " kg" : "-"],
+    ];
+    return '<div class="card next-meet-card"><div class="card-label">' + label + "</div>" +
+      '<div class="next-meet-days">' + days + '<span class="unit">' + (days === 1 ? "day" : "days") + "</span></div>" +
+      '<div class="next-meet-weeks">' + weeksText + "</div>" +
+      '<div class="next-meet-name">' + escapeHtml(meet.event_name) + "</div>" +
+      '<div class="next-meet-meta">' + ukDate(meet.event_date) + (meet.location ? " · " + escapeHtml(meet.location) : "") + "</div>" +
+      '<dl class="next-meet-rows">' + rows.map((row) => "<dt>" + row[0] + "</dt><dd>" + row[1] + "</dd>").join("") + "</dl></div>";
+  }
+
+  function weightClassSummary(status) {
+    const limitText = status.class_label ? escapeHtml(status.class_label) : "";
+    const trend = hasValue(status.trend_kg_per_week) ? signed(status.trend_kg_per_week, 2, " kg/week") : "no trend yet";
+    switch (status.state) {
+      case "on_track":
+        return statHtml("Under limit", fmt(status.margin_kg) + " kg", "positive") +
+          statHtml("Trend", trend) + statHtml("Weigh-in", fmt(status.projected_weigh_in) + " kg");
+      case "drifting_over":
+        return statHtml("Under limit", fmt(status.margin_kg) + " kg") +
+          statHtml("Trend", trend, "negative") +
+          statHtml("Weigh-in", fmt(status.projected_weigh_in) + " kg over " + limitText, "negative");
+      case "cutting_on_track":
+        return statHtml("Over limit", fmt(Math.abs(status.margin_kg)) + " kg") +
+          statHtml("Needed", signed(status.required_kg_per_week, 2, " kg/week")) +
+          statHtml("Trend", trend, "positive");
+      case "over":
+        return statHtml("Over limit", fmt(Math.abs(status.margin_kg)) + " kg", "negative") +
+          (hasValue(status.required_kg_per_week) ? statHtml("Needed", signed(status.required_kg_per_week, 2, " kg/week")) : "") +
+          statHtml("Trend", trend);
+      case "open_class":
+        return statHtml("Class", limitText) + '<span class="chart-stat muted">Open class, no limit to make.</span>';
+      default:
+        return '<span class="chart-stat muted">Add a weight class to your next countdown on ' +
+          '<a href="/competitions">Competitions</a> to see the limit.</span>';
+    }
+  }
+
+  function renderWeightClass(widgetId, container, data) {
+    const status = meetPrep(data).weight_class || {};
+    const series = status.series || [];
+    if (!series.length) {
+      renderInsightEmpty(widgetId, container,
+        'Log your bodyweight to track it against your weight class. <a href="/entries/new">Add an entry</a>.');
+      return;
+    }
+    const points = series.map((point) => ({ x: dayNumber(point.date), y: point.body_weight }));
+    const firstX = points[0].x;
+    const meetDay = status.meet_date ? dayNumber(status.meet_date) : null;
+    const lastX = meetDay !== null ? Math.max(meetDay, points[points.length - 1].x) : points[points.length - 1].x;
+    const datasets = [{
+      label: "Bodyweight", data: points, borderColor: COLOUR_TEAL, backgroundColor: COLOUR_TEAL,
+      pointRadius: 2, borderWidth: 2, tension: 0.25,
+    }];
+    if (meetDay !== null && hasValue(status.projected_weigh_in)) {
+      datasets.push({
+        label: "Trend to weigh-in",
+        data: [points[points.length - 1], { x: meetDay, y: status.projected_weigh_in }],
+        borderColor: COLOUR_ICE, backgroundColor: COLOUR_ICE, borderDash: [6, 5], pointRadius: (ctx) => (ctx.dataIndex === 1 ? 5 : 0), borderWidth: 2,
+      });
+    }
+    if (hasValue(status.limit_kg)) {
+      datasets.push({
+        label: "Class limit (" + status.class_label + ")",
+        data: [{ x: firstX, y: status.limit_kg }, { x: lastX, y: status.limit_kg }],
+        borderColor: COLOUR_RUST, backgroundColor: COLOUR_RUST, pointRadius: 0, borderWidth: 2,
+        fill: { target: "end", above: "rgba(209, 99, 167, 0.08)", below: "rgba(209, 99, 167, 0.08)" },
+      });
+    }
+    renderInsightChart(widgetId, container, weightClassSummary(status), {
+      type: "line",
+      data: { datasets: datasets },
+      options: baseOptions({
+        interaction: { mode: "nearest", intersect: false },
+        scales: {
+          x: dateAxis({ min: firstX, max: lastX + Math.max(2, Math.round((lastX - firstX) * 0.03)) }),
+          y: baseScale({ title: { display: true, text: "kg", color: COLOUR_MUTED } }),
+        },
+        plugins: {
+          tooltip: { callbacks: { title: (items) => items.length ? dayLabel(items[0].parsed.x) : "" } },
+          verticalMarker: meetDay !== null ? { x: meetDay, label: "Weigh-in" } : null,
+        },
+      }),
+      plugins: [verticalMarkerPlugin],
+    });
+  }
+
+  function targetProgressHtml(widgetId, data) {
+    const rows = meetPrep(data).target_progress || [];
+    const label = widgetLabel(widgetId);
+    if (!rows.length) {
+      return '<div class="card insight-empty"><div class="card-label">' + label + "</div>" +
+        '<div class="insight-empty-text">No targets set yet. <a href="/targets">Set targets</a> to track progress here.</div></div>';
+    }
+    const items = rows.map((row) => {
+      const pct = row.progress_pct;
+      const width = hasValue(pct) ? Math.max(0, Math.min(100, pct)) : 0;
+      const tone = row.met ? "met" : hasValue(pct) && pct < 0 ? "behind" : "";
+      const pctText = row.met ? "Met" : hasValue(pct) ? fmt(pct, 0) + "%" : "-";
+      const unit = row.unit ? (row.unit === "%" ? "%" : " " + row.unit) : "";
+      const valueText = (hasValue(row.current) ? fmt(row.current) : "-") + " / " + fmt(row.target) + unit;
+      return '<div class="target-row ' + tone + '">' +
+        '<div class="target-row-head"><span class="target-row-label">' + escapeHtml(row.label) + "</span>" +
+        '<span class="target-row-pct">' + pctText + "</span></div>" +
+        '<div class="target-row-track"><div class="target-row-fill" style="width:' + width + '%"></div></div>' +
+        '<div class="target-row-value">' + valueText + "</div></div>";
+    }).join("");
+    const metCount = rows.filter((row) => row.met).length;
+    return '<div class="card target-board"><div class="card-label">' + label +
+      '<span class="card-label-note">' + metCount + " of " + rows.length + " met · progress from first entry</span></div>" +
+      '<div class="target-grid">' + items + "</div></div>";
+  }
+
+  function renderStrengthScatter(widgetId, container, data) {
+    const scatter = performance(data).strength_scatter || {};
+    const entries = scatter.entries || [];
+    const meets = scatter.meets || [];
+    if (!entries.length && !meets.length) {
+      renderInsightEmpty(widgetId, container,
+        "Log entries with all three lifts and bodyweight to plot strength against bodyweight.");
+      return;
+    }
+    const datasets = (scatter.dots_curves || []).map((curve) => ({
+      type: "line", label: "DOTS " + curve.dots, curveLabel: "DOTS " + curve.dots, isCurve: true,
+      data: curve.points.map((point) => ({ x: point.body_weight, y: point.total })),
+      borderColor: "#4a4946", borderWidth: 1, borderDash: [3, 4], pointRadius: 0, tension: 0.3,
+    }));
+    if (entries.length) {
+      datasets.push({
+        label: "Gym entries", data: entries.slice(0, -1).map((point) => ({ x: point.body_weight, y: point.total, date: point.date })),
+        backgroundColor: "rgba(32, 128, 141, 0.55)", borderColor: COLOUR_TEAL, pointRadius: 3,
+      });
+      const latest = entries[entries.length - 1];
+      datasets.push({
+        label: "Latest", data: [{ x: latest.body_weight, y: latest.total, date: latest.date }],
+        backgroundColor: COLOUR_ICE, borderColor: "#ffffff", borderWidth: 1.5, pointRadius: 6,
+      });
+    }
+    if (meets.length) {
+      datasets.push({
+        label: "Meets", data: meets.map((point) => ({ x: point.body_weight, y: point.total, date: point.date, name: point.name })),
+        backgroundColor: COLOUR_GOLD, borderColor: COLOUR_GOLD, pointStyle: "triangle", pointRadius: 7,
+      });
+    }
+    const allPoints = entries.concat(meets);
+    const totals = allPoints.map((point) => point.total);
+    const bodyweights = allPoints.map((point) => point.body_weight);
+    const latest = entries.length ? entries[entries.length - 1] : meets[meets.length - 1];
+    const dots = (data.dots_score || {}).value;
+    let summary = statHtml("Latest", fmt(latest.total) + " kg at " + fmt(latest.body_weight) + " kg") +
+      (hasValue(dots) ? statHtml("DOTS", fmt(dots)) : "");
+    if (!scatter.sex_configured) {
+      summary += '<span class="chart-stat muted">Set sex in <a href="/settings">Settings</a> to draw DOTS curves.</span>';
+    } else {
+      summary += '<span class="chart-stat muted">Moving up and across a curve is real strength, not just mass.</span>';
+    }
+    renderInsightChart(widgetId, container, summary, {
+      type: "scatter",
+      data: { datasets: datasets },
+      options: baseOptions({
+        scales: {
+          x: baseScale({
+            type: "linear", min: Math.floor(Math.min.apply(null, bodyweights) - 3),
+            max: Math.ceil(Math.max.apply(null, bodyweights) + 3),
+            title: { display: true, text: "Bodyweight (kg)", color: COLOUR_MUTED },
+          }),
+          y: baseScale({
+            min: Math.floor((Math.min.apply(null, totals) - 25) / 10) * 10,
+            max: Math.ceil((Math.max.apply(null, totals) + 25) / 10) * 10,
+            title: { display: true, text: "Total (kg)", color: COLOUR_MUTED },
+          }),
+        },
+        plugins: {
+          legend: {
+            position: "bottom",
+            labels: { color: COLOUR_MUTED, boxWidth: 12, font: { size: 11 }, filter: (item, chartData) => !chartData.datasets[item.datasetIndex].isCurve },
+          },
+          tooltip: {
+            filter: (item) => !item.dataset.isCurve,
+            callbacks: {
+              label: (item) => {
+                const raw = item.raw || {};
+                const name = raw.name ? raw.name + ", " : "";
+                return name + (raw.date ? ukDate(raw.date) + ": " : "") + fmt(raw.y) + " kg at " + fmt(raw.x) + " kg";
+              },
+            },
+          },
+        },
+      }),
+      plugins: [curveLabelPlugin],
+    });
+  }
+
+  function shortMeetName(row) {
+    const name = row.meet_name || "Meet";
+    const trimmed = name.length > 18 ? name.slice(0, 17) + "…" : name;
+    return [trimmed, ukDate(row.date)];
+  }
+
+  function renderGymVsPlatform(widgetId, container, data) {
+    const block = performance(data).gym_vs_platform || {};
+    const rows = (block.meets || []).slice(-8);
+    if (!rows.length) {
+      renderInsightEmpty(widgetId, container,
+        'Log a meet on <a href="/competitions">Competitions</a>, or sync from OpenPowerlifting, to compare gym and platform totals.');
+      return;
+    }
+    let summary;
+    if (hasValue(block.average_carryover_pct)) {
+      const tone = block.average_carryover_pct >= 100 ? "positive" : block.average_carryover_pct >= 95 ? "" : "negative";
+      summary = statHtml("Average carry-over", fmt(block.average_carryover_pct) + "%", tone) +
+        '<span class="chart-stat muted">across ' + block.paired_count + (block.paired_count === 1 ? " meet" : " meets") +
+        " with a gym total in the " + block.max_gym_age_days + " days before</span>";
+    } else {
+      summary = '<span class="chart-stat muted">No gym totals logged in the ' + block.max_gym_age_days +
+        " days before these meets, so there is nothing to compare yet.</span>";
+    }
+    renderInsightChart(widgetId, container, summary, {
+      type: "bar",
+      data: {
+        labels: rows.map(shortMeetName),
+        datasets: [
+          { label: "Gym total", data: rows.map((row) => row.gym_total), backgroundColor: COLOUR_TEAL, borderRadius: 3 },
+          { label: "Meet total", data: rows.map((row) => row.meet_total), backgroundColor: COLOUR_GOLD, borderRadius: 3 },
+        ],
+      },
+      options: baseOptions({
+        scales: {
+          x: baseScale({ grid: { display: false } }),
+          y: baseScale({
+            min: Math.max(0, Math.floor((Math.min.apply(null, rows.map((row) => Math.min(row.meet_total, row.gym_total || row.meet_total))) * 0.85) / 50) * 50),
+            title: { display: true, text: "kg", color: COLOUR_MUTED },
+          }),
+        },
+        plugins: {
+          tooltip: {
+            callbacks: {
+              title: (items) => items.length ? (rows[items[0].dataIndex].meet_name || "Meet") + ", " + ukDate(rows[items[0].dataIndex].date) : "",
+              footer: (items) => {
+                const row = items.length ? rows[items[0].dataIndex] : null;
+                if (!row || !hasValue(row.carryover_pct)) return "No gym total to compare";
+                return "Carry-over " + fmt(row.carryover_pct) + "% (gym " + ukDate(row.gym_date) + ")";
+              },
+            },
+          },
+        },
+      }),
+    });
+  }
+
+  function renderLiftBalance(widgetId, container, data) {
+    const months = (performance(data).lift_balance || {}).months || [];
+    if (!months.length) {
+      renderInsightEmpty(widgetId, container, "Log entries with all three lifts to see how your total is split.");
+      return;
+    }
+    const latest = months[months.length - 1];
+    const summary = statHtml("Squat", fmt(latest.squat_pct) + "%") + statHtml("Bench", fmt(latest.bench_pct) + "%") +
+      statHtml("Deadlift", fmt(latest.deadlift_pct) + "%") +
+      '<span class="chart-stat muted">' + monthLabel(latest.month) + ", total " + fmt(latest.total) + " kg</span>";
+    const dataset = (label, key, colour) => ({
+      label: label, data: months.map((month) => month[key]), backgroundColor: colour, borderWidth: 0, barPercentage: 0.8,
+    });
+    renderInsightChart(widgetId, container, summary, {
+      type: "bar",
+      data: {
+        labels: months.map((month) => monthLabel(month.month)),
+        datasets: [
+          dataset("Squat", "squat_pct", COLOUR_TEAL),
+          dataset("Bench", "bench_pct", COLOUR_RUST),
+          dataset("Deadlift", "deadlift_pct", COLOUR_GOLD),
+        ],
+      },
+      options: baseOptions({
+        scales: {
+          x: baseScale({ stacked: true, grid: { display: false } }),
+          y: baseScale({ stacked: true, min: 0, max: 100, ticks: { color: COLOUR_MUTED, font: { size: 10 }, callback: (value) => value + "%" } }),
+        },
+        plugins: {
+          tooltip: { callbacks: { label: (item) => item.dataset.label + ": " + fmt(item.raw) + "%" } },
+        },
+      }),
+    });
+  }
+
+  function renderRecomposition(widgetId, container, data) {
+    const periods = (performance(data).recomposition || {}).periods || [];
+    if (!periods.length) {
+      renderInsightEmpty(widgetId, container,
+        "Log bodyweight and fat mass across at least two months to see how your composition is changing.");
+      return;
+    }
+    const latest = periods[periods.length - 1];
+    const summary = statHtml(monthLabel(latest.month), signed(latest.lean_change, 1, " kg") + " lean, " +
+      signed(latest.fat_change, 1, " kg") + " fat") +
+      '<span class="chart-stat ' + (latest.quadrant === "regression" ? "negative" : latest.quadrant === "recomposition" ? "positive" : "") +
+      '">' + QUADRANT_LABELS[latest.quadrant] + "</span>";
+    const extent = Math.max(1, Math.max.apply(null, periods.map((period) => Math.max(Math.abs(period.lean_change), Math.abs(period.fat_change)))) * 1.25);
+    const span = Math.ceil(extent * 2) / 2;
+    renderInsightChart(widgetId, container, summary, {
+      type: "scatter",
+      data: {
+        datasets: [{
+          label: "Month-on-month change",
+          data: periods.map((period) => ({ x: period.fat_change, y: period.lean_change, period: period })),
+          backgroundColor: periods.map((period, index) => index === periods.length - 1 ? "#ffffff" : QUADRANT_COLOURS[period.quadrant]),
+          borderColor: periods.map((period) => QUADRANT_COLOURS[period.quadrant]),
+          borderWidth: periods.map((period, index) => index === periods.length - 1 ? 3 : 1),
+          pointRadius: periods.map((period, index) => index === periods.length - 1 ? 7 : 5),
+        }],
+      },
+      options: baseOptions({
+        scales: {
+          x: baseScale({ type: "linear", min: -span, max: span, title: { display: true, text: "Fat mass change (kg)", color: COLOUR_MUTED } }),
+          y: baseScale({ min: -span, max: span, title: { display: true, text: "Lean mass change (kg)", color: COLOUR_MUTED } }),
+        },
+        plugins: {
+          legend: { display: false },
+          quadrants: true,
+          tooltip: {
+            callbacks: {
+              label: (item) => {
+                const period = item.raw.period;
+                return monthLabel(period.month) + ": " + signed(period.lean_change, 2, " kg") + " lean, " +
+                  signed(period.fat_change, 2, " kg") + " fat (" + QUADRANT_LABELS[period.quadrant] + ")";
+              },
+            },
+          },
+        },
+      }),
+      plugins: [quadrantPlugin],
+    });
+  }
+
   const cardRenderers = {
     lift_card: (widgetId, data) => {
       const card = widgetId === "lift.total"
@@ -370,12 +1020,20 @@
     rate_card: analyticsCardHtml,
     pr_interval_card: prIntervalCardHtml,
     countdown_list: countdownListHtml,
+    next_meet_card: nextMeetCardHtml,
+    target_progress_board: targetProgressHtml,
   };
 
   const chartRenderers = {
     chart: renderStandardChart,
     pr_timeline_chart: renderPrTimeline,
     activity_trend_chart: renderActivityTrend,
+    meet_projection_chart: renderMeetProjection,
+    weight_class_chart: renderWeightClass,
+    strength_scatter_chart: renderStrengthScatter,
+    gym_platform_chart: renderGymVsPlatform,
+    lift_balance_chart: renderLiftBalance,
+    recomposition_chart: renderRecomposition,
   };
 
   function widgetById(widgetId) {
@@ -408,8 +1066,11 @@
   }
 
   function defaultWidgetSize(widget) {
-    const isChart = ["chart", "pr_timeline_chart", "activity_trend_chart"].includes(widget.kind);
+    const isChart = ["chart", "pr_timeline_chart", "activity_trend_chart"].includes(widget.kind) ||
+      Object.prototype.hasOwnProperty.call(chartRenderers, widget.kind);
     if (isChart) return { w: widget.kind === "pr_timeline_chart" ? 4 : 6, h: 8 };
+    if (widget.kind === "next_meet_card") return { w: 4, h: 8 };
+    if (widget.kind === "target_progress_board") return { w: 6, h: 8 };
     if (widget.kind === "lift_card") return { w: 3, h: 6 };
     if (widget.kind === "countdown_list") return { w: 12, h: 14 };
     return { w: 3, h: 4 };
