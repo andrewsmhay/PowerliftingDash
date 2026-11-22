@@ -20,6 +20,7 @@
   const DEFAULT_CELL_HEIGHT = 50;
   const MIN_CELL_HEIGHT = 28;
   const LIST_LAYOUT_BREAKPOINT = 700;
+  const GRID_COLUMNS = 12;
 
   let grid;
   let editing = false;
@@ -1106,10 +1107,20 @@
     screen.skipped = [];
     skippedLayoutItems = screen.skipped;
     const allowedIds = new Set(catalog.map((widget) => widget.id));
+    // Saved positions are always 12-column. On a phone the grid is already
+    // in its 1-column list mode, and adding 12-column items there one by one
+    // makes each row-0 widget push the earlier ones down, reversing the
+    // order. Build at 12 columns, then let GridStack collapse to a list
+    // (sorted top-to-bottom, left-to-right). This also keeps the 12-column
+    // layout cached, so saving from a phone stores desktop positions.
+    const liveColumns = grid.getColumn();
+    const collapsed = liveColumns !== GRID_COLUMNS;
+    if (collapsed) grid.column(GRID_COLUMNS, "none");
     screen.widgets.forEach((item) => {
       if (allowedIds.has(item.id)) addWidget(item);
       else skippedLayoutItems.push({ id: item.id, x: item.x, y: item.y, w: item.w, h: item.h });
     });
+    if (collapsed) grid.column(liveColumns, "list");
     renderAllWidgetContents();
     if (editing) {
       addRemoveControls();
@@ -1512,7 +1523,7 @@
 
   function initialise() {
     grid = GridStack.init({
-      column: 12,
+      column: GRID_COLUMNS,
       cellHeight: DEFAULT_CELL_HEIGHT,
       margin: 10,
       float: true,
